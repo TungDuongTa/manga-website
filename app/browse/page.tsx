@@ -30,8 +30,8 @@ import {
   getListByType,
   getByCategory,
   getCategories,
-} from "@/lib/otruyen-actions";
-import { OTruyenComic, Category, Pagination } from "@/lib/otruyen-types";
+} from "@/lib/actions/otruyen-actions";
+import { OTruyenComic, Category, Pagination } from "@/types/otruyen-types";
 
 export default function BrowsePage() {
   const searchParams = useSearchParams();
@@ -177,8 +177,6 @@ export default function BrowsePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
@@ -389,13 +387,13 @@ export default function BrowsePage() {
         ) : comics.length > 0 ? (
           <>
             {viewMode === "grid" ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 max-w-screen">
                 {comics.map((comic, index) => (
                   <MangaCardApi key={comic._id || index} comic={comic} />
                 ))}
               </div>
             ) : (
-              <div className="grid gap-3">
+              <div className="grid gap-3 max-w-screen">
                 {comics.map((comic) => (
                   <MangaCardApi
                     key={comic._id}
@@ -469,8 +467,6 @@ export default function BrowsePage() {
           </div>
         )}
       </main>
-
-      <Footer />
     </div>
   );
 }

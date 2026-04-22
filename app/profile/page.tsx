@@ -256,8 +256,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </main>
-
-        <Footer />
       </div>
     );
   }
@@ -510,8 +508,6 @@ export default function ProfilePage() {
           </TabsContent>
         </Tabs>
       </main>
-
-      <Footer />
     </div>
   );
 }
