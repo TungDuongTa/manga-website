@@ -4,6 +4,8 @@ import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 import ProgressBar from "@/components/ProgressBar";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,8 +33,12 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <ProgressBar />
-          {children}
+          <main className="max-w-screen overflow-x-hidden">
+            <ProgressBar />
+            <Header />
+            {children}
+            <Footer />
+          </main>
         </ThemeProvider>
         <Analytics />
       </body>

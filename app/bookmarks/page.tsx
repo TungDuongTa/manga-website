@@ -1,56 +1,58 @@
-"use client"
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Header } from '@/components/header'
-import { Footer } from '@/components/footer'
-import { MangaCard } from '@/components/manga-card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Bookmark, Clock, CheckCircle, Trash2, Grid, List } from 'lucide-react'
-import { featuredManga } from '@/lib/manga-data'
+import { useState } from "react";
+import Link from "next/link";
+import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import { MangaCard } from "@/components/manga-card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Bookmark, Clock, CheckCircle, Trash2, Grid, List } from "lucide-react";
+import { featuredManga } from "@/lib/manga-data";
 
 // Mock bookmarked data
 const bookmarkedManga = featuredManga.slice(0, 6).map((manga, index) => ({
   ...manga,
   lastRead: `Chapter ${Math.floor(Math.random() * manga.chapters)}`,
   addedDate: `${index + 1} days ago`,
-  progress: Math.floor(Math.random() * 100)
-}))
+  progress: Math.floor(Math.random() * 100),
+}));
 
 const readingHistory = featuredManga.slice(3, 9).map((manga, index) => ({
   ...manga,
   lastRead: `Chapter ${Math.floor(Math.random() * manga.chapters)}`,
-  readDate: index === 0 ? '2 hours ago' : `${index} days ago`
-}))
+  readDate: index === 0 ? "2 hours ago" : `${index} days ago`,
+}));
 
-const completedManga = featuredManga.filter(m => m.status === 'Completed').slice(0, 4)
+const completedManga = featuredManga
+  .filter((m) => m.status === "Completed")
+  .slice(0, 4);
 
 export default function BookmarksPage() {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   const toggleSelect = (id: string) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev)
+    setSelectedItems((prev) => {
+      const newSet = new Set(prev);
       if (newSet.has(id)) {
-        newSet.delete(id)
+        newSet.delete(id);
       } else {
-        newSet.add(id)
+        newSet.add(id);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const clearSelected = () => {
-    setSelectedItems(new Set())
-  }
+    setSelectedItems(new Set());
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
@@ -59,23 +61,25 @@ export default function BookmarksPage() {
               <Bookmark className="h-8 w-8 text-primary" />
               <h1 className="text-3xl font-bold text-foreground">My Library</h1>
             </div>
-            <p className="text-muted-foreground">Manage your bookmarks and reading history</p>
+            <p className="text-muted-foreground">
+              Manage your bookmarks and reading history
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="flex border border-border rounded-md overflow-hidden">
-              <Button 
-                variant={viewMode === 'grid' ? 'default' : 'ghost'} 
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
                 size="icon"
-                onClick={() => setViewMode('grid')}
+                onClick={() => setViewMode("grid")}
                 className="rounded-none"
               >
                 <Grid className="h-4 w-4" />
               </Button>
-              <Button 
-                variant={viewMode === 'list' ? 'default' : 'ghost'} 
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
                 size="icon"
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className="rounded-none"
               >
                 <List className="h-4 w-4" />
@@ -106,7 +110,8 @@ export default function BookmarksPage() {
             {selectedItems.size > 0 && (
               <div className="flex items-center justify-between bg-card border border-border rounded-xl p-4 mb-6">
                 <span className="text-sm text-muted-foreground">
-                  {selectedItems.size} item{selectedItems.size > 1 ? 's' : ''} selected
+                  {selectedItems.size} item{selectedItems.size > 1 ? "s" : ""}{" "}
+                  selected
                 </span>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={clearSelected}>
@@ -121,16 +126,18 @@ export default function BookmarksPage() {
             )}
 
             {bookmarkedManga.length > 0 ? (
-              viewMode === 'grid' ? (
+              viewMode === "grid" ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
                   {bookmarkedManga.map((manga) => (
                     <div key={manga.id} className="relative">
                       <MangaCard manga={manga} />
                       <div className="mt-2">
-                        <p className="text-xs text-muted-foreground">Last read: {manga.lastRead}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Last read: {manga.lastRead}
+                        </p>
                         <div className="w-full bg-secondary rounded-full h-1.5 mt-1">
-                          <div 
-                            className="bg-primary h-1.5 rounded-full" 
+                          <div
+                            className="bg-primary h-1.5 rounded-full"
                             style={{ width: `${manga.progress}%` }}
                           />
                         </div>
@@ -141,14 +148,25 @@ export default function BookmarksPage() {
               ) : (
                 <div className="space-y-3">
                   {bookmarkedManga.map((manga) => (
-                    <div key={manga.id} className="flex items-center gap-4 bg-card border border-border rounded-xl p-4">
+                    <div
+                      key={manga.id}
+                      className="flex items-center gap-4 bg-card border border-border rounded-xl p-4"
+                    >
                       <MangaCard manga={manga} variant="horizontal" />
                       <div className="flex items-center gap-4 ml-auto">
                         <div className="text-right">
-                          <p className="text-sm text-foreground">Progress: {manga.progress}%</p>
-                          <p className="text-xs text-muted-foreground">Added {manga.addedDate}</p>
+                          <p className="text-sm text-foreground">
+                            Progress: {manga.progress}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Added {manga.addedDate}
+                          </p>
                         </div>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -159,7 +177,9 @@ export default function BookmarksPage() {
             ) : (
               <div className="text-center py-16 bg-card border border-border rounded-xl">
                 <Bookmark className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No bookmarks yet</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  No bookmarks yet
+                </h3>
                 <p className="text-muted-foreground mb-4">
                   Start adding manga to your library to see them here
                 </p>
@@ -175,11 +195,18 @@ export default function BookmarksPage() {
             {readingHistory.length > 0 ? (
               <div className="space-y-3">
                 {readingHistory.map((manga) => (
-                  <div key={manga.id} className="flex items-center gap-4 bg-card border border-border rounded-xl p-4 hover:bg-secondary/50 transition-colors">
+                  <div
+                    key={manga.id}
+                    className="flex items-center gap-4 bg-card border border-border rounded-xl p-4 hover:bg-secondary/50 transition-colors"
+                  >
                     <MangaCard manga={manga} variant="horizontal" />
                     <div className="ml-auto text-right">
-                      <p className="text-sm text-foreground">{manga.lastRead}</p>
-                      <p className="text-xs text-muted-foreground">{manga.readDate}</p>
+                      <p className="text-sm text-foreground">
+                        {manga.lastRead}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {manga.readDate}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -187,7 +214,9 @@ export default function BookmarksPage() {
             ) : (
               <div className="text-center py-16 bg-card border border-border rounded-xl">
                 <Clock className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No reading history</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  No reading history
+                </h3>
                 <p className="text-muted-foreground mb-4">
                   Your reading history will appear here
                 </p>
@@ -215,7 +244,9 @@ export default function BookmarksPage() {
             ) : (
               <div className="text-center py-16 bg-card border border-border rounded-xl">
                 <CheckCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">No completed manga</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  No completed manga
+                </h3>
                 <p className="text-muted-foreground mb-4">
                   Manga you finish reading will appear here
                 </p>
@@ -227,8 +258,6 @@ export default function BookmarksPage() {
           </TabsContent>
         </Tabs>
       </main>
-
-      <Footer />
     </div>
-  )
+  );
 }

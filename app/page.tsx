@@ -8,7 +8,7 @@ import {
   getHomeData,
   getListByType,
   getCategories,
-} from "@/lib/otruyen-actions";
+} from "@/lib/actions/otruyen-actions";
 import { recentComments } from "@/lib/manga-data";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
@@ -144,8 +144,6 @@ export default async function HomePage() {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 }

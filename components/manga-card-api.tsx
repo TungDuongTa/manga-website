@@ -7,7 +7,7 @@ import {
   getImageUrl,
   formatStatus,
   formatUpdatedAt,
-} from "@/lib/otruyen-types";
+} from "@/types/otruyen-types";
 
 interface MangaCardApiProps {
   comic: OTruyenComic;
@@ -28,18 +28,17 @@ export function MangaCardApi({
   if (variant === "horizontal") {
     return (
       <Link href={`/manga/${comic.slug}`} className="group block">
-        <div className="flex gap-4 p-3 rounded-lg bg-card hover:bg-secondary transition-colors">
-          <div className="relative w-16 h-22 shrink-0 overflow-hidden rounded-md bg-muted">
+        <div className="flex gap-4 p-3 rounded-lg bg-card hover:bg-secondary transition-colors ">
+          <div className="relative w-16 h-22  overflow-hidden rounded-md bg-muted">
             <Image
               src={getImageUrl(comic.thumb_url)}
               alt={comic.name}
               fill
               className="object-cover transition-transform group-hover:scale-105"
-              unoptimized
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+          <div className="flex-1 min-w-0 flex-col">
+            <h3 className="font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
               {comic.name}
             </h3>
             <div className="flex items-center gap-2 mt-1">
