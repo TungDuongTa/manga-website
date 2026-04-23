@@ -6,6 +6,9 @@ import "./globals.css";
 import ProgressBar from "@/components/ProgressBar";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { Toaster } from "@/components/ui/sonner";
+import { auth } from "@/lib/better-auth/auth";
+import { headers } from "next/headers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -19,11 +22,22 @@ export const metadata: Metadata = {
   keywords: ["manga", "manhwa", "manhua", "read manga", "webtoon", "comics"],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  const user = session?.user
+    ? {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image ?? "",
+      }
+    : null;
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
@@ -35,8 +49,9 @@ export default function RootLayout({
         >
           <main className="max-w-screen overflow-x-hidden">
             <ProgressBar />
-            <Header />
+            <Header user={user} />
             {children}
+            <Toaster />
             <Footer />
           </main>
         </ThemeProvider>

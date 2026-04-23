@@ -16,8 +16,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SearchCommand, SearchTrigger } from "@/components/search-command";
-
-export function Header() {
+type HeaderProps = {
+  user: User | null;
+};
+export function Header({ user }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);

@@ -1,15 +1,20 @@
 "use client";
+import InputField from "@/components/forms/InputField";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { signUpWithEmail } from "@/lib/actions/auth.actions";
 import { signUpSchema } from "@/lib/zod/auth.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -27,7 +32,20 @@ const SignUp = () => {
   });
   const onSubmit = async (data: SignUpFormData) => {
     try {
-    } catch (error) {}
+      const result = await signUpWithEmail(data);
+      if (result.success) {
+        router.replace("/");
+        console.log("success");
+      }
+    } catch (error) {
+      console.error("Sign-up error:", error);
+      toast.error("Sign-up failed. Please try again.", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to create an account",
+      });
+    }
   };
   return (
     <div className="min-h-screen bg-background">
@@ -47,50 +65,34 @@ const SignUp = () => {
         <Card className="bg-card border-border">
           <CardHeader className="pb-4"></CardHeader>
           <CardContent>
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                //setlogin
-              }}
-            >
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Username
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Choose a username"
-                    className="pl-10 bg-secondary border-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="email"
-                    placeholder="your@email.com"
-                    className="pl-10 bg-secondary border-none"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a password"
-                    className="pl-10 pr-10 bg-secondary border-none"
-                  />
+            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+              <InputField
+                name="userName"
+                label="UserName"
+                Icon={User}
+                type="text"
+                placeholder="Enter your username"
+                register={register}
+                error={errors.userName}
+              />
+              <InputField
+                name="email"
+                label="Email"
+                Icon={Mail}
+                type="text"
+                placeholder="your@gmail.com"
+                register={register}
+                error={errors.email}
+              />
+              <InputField
+                name="password"
+                label="Password"
+                Icon={Lock}
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                register={register}
+                error={errors.password}
+                children={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -102,16 +104,16 @@ const SignUp = () => {
                       <Eye className="h-4 w-4" />
                     )}
                   </button>
-                </div>
-              </div>
+                }
+              />
               <div>
                 <label className="flex items-center gap-2 text-sm text-muted-foreground">
                   <input type="checkbox" className="rounded border-border" />I
                   agree to the Terms of Service and Privacy Policy
                 </label>
               </div>
-              <Button type="submit" className="w-full">
-                Create Account
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting ? "Creating Account ..." : "Create Account"}
               </Button>
             </form>
 
