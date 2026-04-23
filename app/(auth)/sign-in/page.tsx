@@ -12,8 +12,12 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signInSchema } from "@/lib/zod/auth.schema";
+import { signInWithEmail } from "@/lib/actions/auth.actions";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -30,15 +34,24 @@ const SignIn = () => {
   });
   const onSubmit = async (data: SignInFormData) => {
     try {
-      console.log("submit");
+      const result = await signInWithEmail(data);
+      if (result?.success) {
+        router.replace("/");
+      } else {
+        const message = result.message ?? "Invalid email or password";
+        setError("password", { type: "manual", message });
+        toast.error(message);
+      }
     } catch (error) {
-      console.error("error");
+      console.error("Sign-in error:", error);
+      toast.error("Sign-in failed. Please try again.", {
+        description:
+          error instanceof Error ? error.message : "Failed to sign in",
+      });
     }
   };
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
       <main className="mx-auto max-w-md px-4 py-16">
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">

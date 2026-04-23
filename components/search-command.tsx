@@ -125,9 +125,9 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
             </div>
           ) : (
             <div className="p-2">
-              {results.map((comic) => (
+              {results.map((comic, index) => (
                 <Link
-                  key={comic._id}
+                  key={comic._id || index}
                   href={`/manga/${comic.slug}`}
                   onClick={handleSelect}
                   className="flex items-start gap-4 p-3 rounded-lg hover:bg-secondary transition-colors group"

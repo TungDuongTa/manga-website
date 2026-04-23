@@ -23,5 +23,11 @@ declare global {
     value?: string;
     children?: React.ReactNode;
   };
+  type User = {
+    id: string;
+    name: string;
+    email: string;
+    image?: string;
+  };
 }
 export {};

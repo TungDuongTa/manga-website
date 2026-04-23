@@ -29,8 +29,6 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Hero Section */}
         <section className="mb-12">

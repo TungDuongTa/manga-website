@@ -27,15 +27,15 @@ export const getAuth = async () => {
       maxPasswordLength: 128,
       autoSignIn: true,
     },
-    socialProviders: {
-      google: {
-        prompt: "select_account",
-        enabled: true,
-        clientId: process.env.GOOGLE_CLIENT_ID as string,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-        callbackURL: `/`,
-      },
-    },
+    // socialProviders: {
+    //   google: {
+    //     prompt: "select_account",
+    //     enabled: true,
+    //     clientId: process.env.GOOGLE_CLIENT_ID as string,
+    //     clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    //     callbackURL: `/`,
+    //   },
+    // },
     plugins: [nextCookies()],
   });
   return authInstance;

@@ -1,3 +1,4 @@
+"use server";
 import { auth } from "../better-auth/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -5,7 +6,7 @@ export const signUpWithEmail = async (data: SignUpFormData) => {
   try {
     const response = await auth.api.signUpEmail({
       body: {
-        userName: data.userName,
+        name: data.userName,
         email: data.email,
         password: data.password,
       },
