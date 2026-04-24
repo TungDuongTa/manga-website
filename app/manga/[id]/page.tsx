@@ -19,12 +19,14 @@ import {
   ArrowUpDown,
   Play,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
-import { getComicDetail, getHomeData } from "@/lib/actions/otruyen-actions";
+import { getComicDetail } from "@/lib/actions/otruyen-actions";
 import {
   isMangaBookmarked,
   toggleMangaBookmark,
 } from "@/lib/actions/bookmark.actions";
+import { getReadChapterNames } from "@/lib/actions/read-chapter.actions";
 import { toast } from "sonner";
 import {
   ComicDetailItem,
@@ -48,15 +50,17 @@ export default function MangaDetailPage({
   const [chaptersOrder, setChaptersOrder] = useState<"desc" | "asc">("desc");
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
+  const [readChapterNames, setReadChapterNames] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [detailData, bookmarked] = await Promise.all([
+        const [detailData, bookmarked, readChapters] = await Promise.all([
           getComicDetail(id),
 
           isMangaBookmarked(id),
+          getReadChapterNames(id),
         ]);
 
         if (detailData) {
@@ -64,6 +68,7 @@ export default function MangaDetailPage({
         }
 
         setIsBookmarked(bookmarked);
+        setReadChapterNames(readChapters);
       } catch (error) {
         console.error("Failed to fetch comic:", error);
       } finally {
@@ -109,6 +114,7 @@ export default function MangaDetailPage({
   const latestChapter =
     chapters.length > 0 ? chapters[chapters.length - 1] : null;
   const firstChapter = chapters.length > 0 ? chapters[0] : null;
+  const readChapterSet = new Set(readChapterNames);
 
   const handleBookmarkToggle = async () => {
     if (!comic || isBookmarkLoading) return;
@@ -346,24 +352,43 @@ export default function MangaDetailPage({
 
                 {/* Chapter List */}
                 <div className="bg-card border border-border rounded-xl divide-y divide-border max-h-[500px] overflow-y-auto">
-                  {sortedChapters.map((chapter, index) => (
-                    <Link
-                      key={`${chapter.chapter_name}-${index}`}
-                      href={`/manga/${comic.slug}/chapter/${chapter.chapter_name}`}
-                      className="flex items-center justify-between p-4 hover:bg-secondary transition-colors first:rounded-t-xl last:rounded-b-xl"
-                    >
-                      <div className="flex items-center gap-4">
-                        <span className="font-medium text-foreground">
-                          Chapter {chapter.chapter_name}
-                        </span>
-                        {chapter.chapter_title && (
-                          <span className="text-muted-foreground text-sm hidden sm:inline">
-                            {chapter.chapter_title}
+                  {sortedChapters.map((chapter, index) => {
+                    const isRead = readChapterSet.has(chapter.chapter_name);
+
+                    return (
+                      <Link
+                        key={`${chapter.chapter_name}-${index}`}
+                        href={`/manga/${comic.slug}/chapter/${chapter.chapter_name}`}
+                        className={`flex items-center justify-between p-4 transition-colors first:rounded-t-xl last:rounded-b-xl ${
+                          isRead
+                            ? "bg-primary/5 hover:bg-primary/10"
+                            : "hover:bg-secondary"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <span
+                            className={`font-medium ${
+                              isRead ? "text-primary" : "text-foreground"
+                            }`}
+                          >
+                            Chapter {chapter.chapter_name}
+                          </span>
+                          {chapter.chapter_title && (
+                            <span className="text-muted-foreground text-sm hidden sm:inline">
+                              {chapter.chapter_title}
+                            </span>
+                          )}
+                        </div>
+
+                        {isRead && (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Read
                           </span>
                         )}
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               </TabsContent>
             </Tabs>

@@ -29,8 +29,13 @@ import {
   Bookmark,
   BookmarkCheck,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { getComicDetail, getChapterData } from "@/lib/actions/otruyen-actions";
+import {
+  getReadChapterNames,
+  markChapterAsRead,
+} from "@/lib/actions/read-chapter.actions";
 import {
   ComicDetailItem,
   ChapterImage,
@@ -62,6 +67,7 @@ export default function ChapterReaderPage({
   const [brightness, setBrightness] = useState(100);
   const [zoom, setZoom] = useState(100);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [readChapterNames, setReadChapterNames] = useState<string[]>([]);
 
   // Bottom navbar visibility — hide when scrolling down, show when scrolling up
   const [showBottomNav, setShowBottomNav] = useState(false);
@@ -103,7 +109,13 @@ export default function ChapterReaderPage({
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const detailData = await getComicDetail(id);
+        const [detailData, readChapters] = await Promise.all([
+          getComicDetail(id),
+          getReadChapterNames(id),
+        ]);
+
+        setReadChapterNames(readChapters);
+
         if (detailData?.item) {
           setComic(detailData.item);
           const allChapters = detailData.item.chapters?.[0]?.server_data || [];
@@ -120,6 +132,21 @@ export default function ChapterReaderPage({
             if (chapterContent?.item) {
               setChapterImages(chapterContent.item.chapter_image);
               setChapterPath(chapterContent.item.chapter_path);
+            }
+          }
+
+          if (currentChapterData) {
+            const marked = await markChapterAsRead({
+              comicId: detailData.item._id,
+              comicSlug: detailData.item.slug,
+              comicName: detailData.item.name,
+              chapterName: chapter,
+            });
+
+            if (marked.success) {
+              setReadChapterNames((prev) =>
+                prev.includes(chapter) ? prev : [chapter, ...prev],
+              );
             }
           }
         }
@@ -292,25 +319,42 @@ export default function ChapterReaderPage({
               </Button>
             </div>
             <div className="overflow-y-auto flex-1 py-2">
-              {chapters.map((ch, index) => (
-                <button
-                  key={`${ch.chapter_name}-${index}`}
-                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-secondary/60 transition-colors ${
-                    ch.chapter_name === chapter
-                      ? "text-primary font-semibold bg-primary/10"
-                      : "text-foreground"
-                  }`}
-                  onClick={() => {
-                    setShowChapterList(false);
-                    router.push(
-                      `/manga/${comic.slug}/chapter/${ch.chapter_name}`,
-                    );
-                  }}
-                >
-                  Chapter {ch.chapter_name}
-                  {ch.chapter_title ? ` — ${ch.chapter_title}` : ""}
-                </button>
-              ))}
+              {chapters.map((ch, index) => {
+                const isCurrent = ch.chapter_name === chapter;
+                const isRead = readChapterNames.includes(ch.chapter_name);
+
+                return (
+                  <button
+                    key={`${ch.chapter_name}-${index}`}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                      isCurrent
+                        ? "text-primary font-semibold bg-primary/10"
+                        : isRead
+                          ? "text-primary bg-primary/5 hover:bg-primary/10"
+                          : "text-foreground hover:bg-secondary/60"
+                    }`}
+                    onClick={() => {
+                      setShowChapterList(false);
+                      router.push(
+                        `/manga/${comic.slug}/chapter/${ch.chapter_name}`,
+                      );
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate">
+                        Chapter {ch.chapter_name}
+                        {ch.chapter_title ? ` - ${ch.chapter_title}` : ""}
+                      </span>
+                      {isRead && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium shrink-0">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Read
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -543,3 +587,4 @@ export default function ChapterReaderPage({
     </div>
   );
 }
+
