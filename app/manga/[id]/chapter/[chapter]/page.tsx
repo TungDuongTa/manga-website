@@ -7,6 +7,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -42,6 +50,32 @@ import {
   ChapterData,
   getChapterImageUrl,
 } from "@/types/otruyen-types";
+
+const chapterLabelCollator = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
+
+const parseChapterNumber = (chapterName: string): number | null => {
+  const parsed = Number.parseFloat(chapterName);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const compareChapterNames = (a: string, b: string): number => {
+  if (a === b) return 0;
+
+  const aNum = parseChapterNumber(a);
+  const bNum = parseChapterNumber(b);
+
+  if (aNum !== null && bNum !== null) {
+    return aNum - bNum;
+  }
+
+  if (aNum !== null) return 1;
+  if (bNum !== null) return -1;
+
+  return chapterLabelCollator.compare(a, b);
+};
 
 export default function ChapterReaderPage({
   params,
@@ -165,28 +199,80 @@ export default function ChapterReaderPage({
 
   const totalPages = chapterImages.length;
 
-  const currentChapterIndex = chapters.findIndex(
+  const orderedChapters = [...chapters].sort((a, b) =>
+    compareChapterNames(a.chapter_name, b.chapter_name),
+  );
+  const currentChapterIndex = orderedChapters.findIndex(
     (c) => c.chapter_name === chapter,
   );
   const prevChapter =
-    currentChapterIndex < chapters.length - 1
-      ? chapters[currentChapterIndex + 1]
+    currentChapterIndex > 0
+      ? orderedChapters[currentChapterIndex - 1]
       : null;
   const nextChapter =
-    currentChapterIndex > 0 ? chapters[currentChapterIndex - 1] : null;
+    currentChapterIndex >= 0 && currentChapterIndex < orderedChapters.length - 1
+      ? orderedChapters[currentChapterIndex + 1]
+      : null;
+  const currentChapterInfo = chapters.find((c) => c.chapter_name === chapter);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (readingMode === "horizontal") {
-        if (e.key === "ArrowLeft")
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const comicSlug = comic?.slug || id;
+
+      if (e.key === "ArrowLeft") {
+        // In horizontal mode, keep page-by-page navigation until first page.
+        if (readingMode === "horizontal" && currentPage > 1) {
+          e.preventDefault();
           setCurrentPage((prev) => Math.max(1, prev - 1));
-        else if (e.key === "ArrowRight")
+          return;
+        }
+
+        if (prevChapter) {
+          e.preventDefault();
+          router.push(`/manga/${comicSlug}/chapter/${prevChapter.chapter_name}`);
+        }
+        return;
+      }
+
+      if (e.key === "ArrowRight") {
+        // In horizontal mode, keep page-by-page navigation until last page.
+        if (readingMode === "horizontal" && currentPage < totalPages) {
+          e.preventDefault();
           setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+          return;
+        }
+
+        if (nextChapter) {
+          e.preventDefault();
+          router.push(`/manga/${comicSlug}/chapter/${nextChapter.chapter_name}`);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [readingMode, totalPages]);
+  }, [
+    readingMode,
+    totalPages,
+    currentPage,
+    prevChapter,
+    nextChapter,
+    comic?.slug,
+    id,
+    router,
+  ]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -231,6 +317,77 @@ export default function ChapterReaderPage({
     >
       {/* Main Reader Content — no top padding since no top nav */}
       <main className="pb-24">
+        <section className="mx-auto max-w-7xl px-4 py-4 md:py-6">
+          <div className="bg-card border border-border rounded-xl p-4 md:p-5">
+            <Breadcrumb className="mb-3">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/">Home</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href={`/manga/${comic.slug}`}>{comic.name}</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Chapter {chapter}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+
+            <div className="flex flex-col gap-4">
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-2xl font-bold text-foreground line-clamp-2">
+                  {comic.name}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+                  Chapter {chapter}
+                  {currentChapterInfo?.chapter_title
+                    ? ` - ${currentChapterInfo.chapter_title}`
+                    : ""}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 shrink-0 flex-wrap">
+                {prevChapter ? (
+                  <Link
+                    href={`/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`}
+                  >
+                    <Button variant="outline" className="gap-2">
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="outline" className="gap-2" disabled>
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                )}
+
+                {nextChapter ? (
+                  <Link
+                    href={`/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`}
+                  >
+                    <Button variant="outline" className="gap-2">
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="outline" className="gap-2" disabled>
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
         {readingMode === "horizontal" ? (
           <div className="flex items-center justify-center min-h-screen px-4">
             <Button
@@ -591,4 +748,5 @@ export default function ChapterReaderPage({
     </div>
   );
 }
+
 
