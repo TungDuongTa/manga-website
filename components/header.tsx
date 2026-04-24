@@ -24,7 +24,7 @@ type HeaderProps = {
   user?: HeaderUser | null;
 };
 
-export function Header({ user = null }: HeaderProps) {
+export function Header({ user }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
