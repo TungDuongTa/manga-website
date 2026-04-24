@@ -3,8 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
+import { useRouter } from "next/navigation";
 import { MangaCardApi } from "@/components/manga-card-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +22,11 @@ import {
 } from "lucide-react";
 import { getComicDetail, getHomeData } from "@/lib/actions/otruyen-actions";
 import {
+  isMangaBookmarked,
+  toggleMangaBookmark,
+} from "@/lib/actions/bookmark.actions";
+import { toast } from "sonner";
+import {
   ComicDetailItem,
   OTruyenComic,
   getImageUrl,
@@ -35,6 +39,7 @@ export default function MangaDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const router = useRouter();
   const { id } = use(params);
   const [comic, setComic] = useState<ComicDetailItem | null>(null);
   const [relatedComics, setRelatedComics] = useState<OTruyenComic[]>([]);
@@ -42,27 +47,23 @@ export default function MangaDetailPage({
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [chaptersOrder, setChaptersOrder] = useState<"desc" | "asc">("desc");
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [detailData, homeData] = await Promise.all([
+        const [detailData, bookmarked] = await Promise.all([
           getComicDetail(id),
-          getHomeData(),
+
+          isMangaBookmarked(id),
         ]);
 
         if (detailData) {
           setComic(detailData.item);
         }
 
-        if (homeData) {
-          // Filter related comics by category
-          const related = homeData.items
-            .filter((c) => c.slug !== id)
-            .slice(0, 6);
-          setRelatedComics(related);
-        }
+        setIsBookmarked(bookmarked);
       } catch (error) {
         console.error("Failed to fetch comic:", error);
       } finally {
@@ -105,14 +106,46 @@ export default function MangaDetailPage({
     return chaptersOrder === "desc" ? bNum - aNum : aNum - bNum;
   });
 
-  const firstChapter =
+  const latestChapter =
     chapters.length > 0 ? chapters[chapters.length - 1] : null;
-  const latestChapter = chapters.length > 0 ? chapters[0] : null;
+  const firstChapter = chapters.length > 0 ? chapters[0] : null;
+
+  const handleBookmarkToggle = async () => {
+    if (!comic || isBookmarkLoading) return;
+
+    setIsBookmarkLoading(true);
+    try {
+      const result = await toggleMangaBookmark({
+        comicId: comic._id,
+        slug: comic.slug,
+        name: comic.name,
+        thumbUrl: comic.thumb_url,
+        status: comic.status,
+        comicUpdatedAt: comic.updatedAt,
+        categories: comic.category || [],
+        latestChapterName: latestChapter?.chapter_name,
+      });
+
+      if (!result.success) {
+        toast.error(result.message);
+        if (result.requiresSignIn) {
+          router.push("/sign-in");
+        }
+        return;
+      }
+
+      setIsBookmarked(result.bookmarked);
+      toast.success(result.message);
+    } catch (error) {
+      console.error("Failed to bookmark manga:", error);
+      toast.error("Could not update bookmark. Please try again.");
+    } finally {
+      setIsBookmarkLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
       <main>
         {/* Hero Banner */}
         <div className="relative h-64 md:h-80 overflow-hidden">
@@ -227,12 +260,17 @@ export default function MangaDetailPage({
                   size="lg"
                   variant={isBookmarked ? "default" : "outline"}
                   className="gap-2"
-                  onClick={() => setIsBookmarked(!isBookmarked)}
+                  onClick={handleBookmarkToggle}
+                  disabled={isBookmarkLoading}
                 >
                   <Heart
                     className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`}
                   />
-                  {isBookmarked ? "Bookmarked" : "Bookmark"}
+                  {isBookmarkLoading
+                    ? "Saving..."
+                    : isBookmarked
+                      ? "Bookmarked"
+                      : "Bookmark"}
                 </Button>
                 <Button size="lg" variant="ghost" className="gap-2">
                   <Share2 className="h-4 w-4" />
