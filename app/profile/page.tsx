@@ -50,8 +50,6 @@ export default function ProfilePage() {
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
-
         <main className="mx-auto max-w-md px-4 py-16">
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
@@ -262,8 +260,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Profile Header */}
         <div className="bg-card border border-border rounded-xl p-6 mb-8">

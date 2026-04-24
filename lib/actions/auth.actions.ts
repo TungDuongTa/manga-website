@@ -44,3 +44,18 @@ export const signInWithEmail = async (data: SignInFormData) => {
     };
   }
 };
+export const signInWithGoogle = async () => {
+  const response = await auth.api.signInSocial({
+    body: {
+      provider: "google",
+      callbackURL: "/",
+      disableRedirect: true,
+    },
+  });
+
+  if (!response.url) {
+    throw new Error("Failed to create Google sign-in URL");
+  }
+
+  redirect(response.url);
+};

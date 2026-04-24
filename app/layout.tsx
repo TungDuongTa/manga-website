@@ -45,7 +45,6 @@ export default async function RootLayout({
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
-          disableTransitionOnChange
         >
           <main className="max-w-screen overflow-x-hidden">
             <ProgressBar />

@@ -7,7 +7,6 @@ import {
   Menu,
   X,
   BookOpen,
-  User,
   Bookmark,
   Clock,
   Home,
@@ -16,10 +15,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SearchCommand, SearchTrigger } from "@/components/search-command";
+import {
+  HeaderAuthButton,
+  type HeaderUser,
+} from "@/components/header-auth-button";
+
 type HeaderProps = {
-  user: User | null;
+  user?: HeaderUser | null;
 };
-export function Header({ user }: HeaderProps) {
+
+export function Header({ user = null }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -105,12 +110,7 @@ export function Header({ user }: HeaderProps) {
 
               <ThemeToggle />
 
-              <Link href="/profile">
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">Sign In</span>
-                </Button>
-              </Link>
+              <HeaderAuthButton user={user} />
 
               <Button
                 variant="ghost"
