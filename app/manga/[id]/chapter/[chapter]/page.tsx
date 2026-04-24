@@ -140,6 +140,10 @@ export default function ChapterReaderPage({
               comicId: detailData.item._id,
               comicSlug: detailData.item.slug,
               comicName: detailData.item.name,
+              thumbUrl: detailData.item.thumb_url,
+              status: detailData.item.status,
+              comicUpdatedAt: detailData.item.updatedAt,
+              categories: detailData.item.category || [],
               chapterName: chapter,
             });
 

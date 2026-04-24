@@ -9,6 +9,9 @@ import {
   formatUpdatedAt,
 } from "@/types/otruyen-types";
 
+const FALLBACK_COVER =
+  "https://placehold.co/300x450/111827/9CA3AF?text=No+Cover";
+
 interface MangaCardApiProps {
   comic: OTruyenComic;
   showLatestChapter?: boolean;
@@ -20,6 +23,10 @@ export function MangaCardApi({
   showLatestChapter = true,
   variant = "default",
 }: MangaCardApiProps) {
+  const coverSrc = comic.thumb_url?.trim()
+    ? getImageUrl(comic.thumb_url)
+    : FALLBACK_COVER;
+
   const statusColors: Record<string, string> = {
     ongoing: "bg-accent text-accent-foreground",
     completed: "bg-primary text-primary-foreground",
@@ -31,7 +38,7 @@ export function MangaCardApi({
         <div className="flex gap-4 p-3 rounded-lg bg-card hover:bg-secondary transition-colors ">
           <div className="relative w-16 h-22  overflow-hidden rounded-md bg-muted">
             <Image
-              src={getImageUrl(comic.thumb_url)}
+              src={coverSrc}
               alt={comic.name}
               fill
               className="object-cover transition-transform group-hover:scale-105"
@@ -64,7 +71,7 @@ export function MangaCardApi({
       <Link href={`/manga/${comic.slug}`} className="group block">
         <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-muted">
           <Image
-            src={getImageUrl(comic.thumb_url)}
+            src={coverSrc}
             alt={comic.name}
             fill
             className="object-cover transition-transform group-hover:scale-105"
@@ -85,7 +92,7 @@ export function MangaCardApi({
     <Link href={`/manga/${comic.slug}`} className="group block">
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl mb-3 bg-muted">
         <Image
-          src={getImageUrl(comic.thumb_url)}
+          src={coverSrc}
           alt={comic.name}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
