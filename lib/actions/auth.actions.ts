@@ -27,6 +27,41 @@ export const signOut = async () => {
   }
 };
 
+type UpdateUserProfileInput = {
+  displayName: string;
+  avatar?: string | null;
+};
+
+export const updateUserProfile = async (data: UpdateUserProfileInput) => {
+  try {
+    const name = data.displayName.trim();
+    if (name.length < 2 || name.length > 40) {
+      return {
+        success: false,
+        message: "Display name must be between 2 and 40 characters.",
+      };
+    }
+
+    const normalizedAvatar = data.avatar?.trim() || null;
+
+    await auth.api.updateUser({
+      headers: await headers(),
+      body: {
+        name,
+        image: normalizedAvatar,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Profile updated successfully.",
+    };
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return { success: false, message: "Failed to update profile." };
+  }
+};
+
 export const signInWithEmail = async (data: SignInFormData) => {
   try {
     const response = await auth.api.signInEmail({
