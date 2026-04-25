@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ChevronLeft, ChevronRight, ArrowUp, Loader2 } from "lucide-react";
 import ChapterBottomNav from "@/components/chapter-bottom-nav";
+import { MangaCommentsSection } from "@/components/manga-comments-section";
 import { getComicDetail, getChapterData } from "@/lib/actions/otruyen-actions";
 import {
   isMangaBookmarked,
@@ -400,6 +401,13 @@ export default function ChapterReaderPage({
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 pb-8">
+          <MangaCommentsSection
+            comicSlug={comic.slug || id}
+            chapterName={chapter}
+          />
         </section>
       </main>
 

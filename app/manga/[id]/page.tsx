@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { MangaCardApi } from "@/components/manga-card-api";
+import { MangaCommentsSection } from "@/components/manga-comments-section";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -393,6 +394,10 @@ export default function MangaDetailPage({
               </TabsContent>
             </Tabs>
           </div>
+
+          <section className="mt-8">
+            <MangaCommentsSection comicSlug={comic.slug || id} />
+          </section>
 
           {/* Related Manga */}
           {relatedComics.length > 0 && (
