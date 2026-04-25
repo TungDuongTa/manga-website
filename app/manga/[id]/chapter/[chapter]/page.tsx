@@ -24,26 +24,26 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  Home,
-  List,
-  Settings,
   Maximize2,
   Minimize2,
-  BookOpen,
   Sun,
   ZoomIn,
   ArrowUp,
   X,
-  Bookmark,
-  BookmarkCheck,
   Loader2,
   CheckCircle2,
 } from "lucide-react";
+import ChapterBottomNav from "@/components/chapter-bottom-nav";
 import { getComicDetail, getChapterData } from "@/lib/actions/otruyen-actions";
+import {
+  isMangaBookmarked,
+  toggleMangaBookmark,
+} from "@/lib/actions/bookmark.actions";
 import {
   getReadChapterNames,
   markChapterAsRead,
 } from "@/lib/actions/read-chapter.actions";
+import { toast } from "sonner";
 import {
   ComicDetailItem,
   ChapterImage,
@@ -101,53 +101,23 @@ export default function ChapterReaderPage({
   const [brightness, setBrightness] = useState(100);
   const [zoom, setZoom] = useState(100);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
   const [readChapterNames, setReadChapterNames] = useState<string[]>([]);
-
-  // Bottom navbar visibility — hide when scrolling down, show when scrolling up
-  const [showBottomNav, setShowBottomNav] = useState(false);
-  const lastScrollY = useRef(0);
-  const scrollDelta = useRef(0);
-
-  useEffect(() => {
-    // Show bar initially after a short delay so it doesn't flash on load
-    const t = setTimeout(() => setShowBottomNav(true), 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentY = window.scrollY;
-      const diff = currentY - lastScrollY.current;
-      scrollDelta.current += diff;
-
-      if (diff < 0) {
-        // Scrolling up — always show
-        setShowBottomNav(true);
-        scrollDelta.current = 0;
-      } else if (scrollDelta.current > 40) {
-        // Scrolled down more than 40px total — hide
-        setShowBottomNav(false);
-        setShowSettings(false);
-        setShowChapterList(false);
-        scrollDelta.current = 0;
-      }
-
-      lastScrollY.current = currentY;
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const chapterListContainerRef = useRef<HTMLDivElement | null>(null);
+  const currentChapterButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Fetch comic detail and chapter data
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [detailData, readChapters] = await Promise.all([
+        const [detailData, bookmarked, readChapters] = await Promise.all([
           getComicDetail(id),
+          isMangaBookmarked(id),
           getReadChapterNames(id),
         ]);
 
+        setIsBookmarked(bookmarked);
         setReadChapterNames(readChapters);
 
         if (detailData?.item) {
@@ -205,15 +175,16 @@ export default function ChapterReaderPage({
   const currentChapterIndex = orderedChapters.findIndex(
     (c) => c.chapter_name === chapter,
   );
+  const chapterListChapters = [...orderedChapters].reverse();
   const prevChapter =
-    currentChapterIndex > 0
-      ? orderedChapters[currentChapterIndex - 1]
-      : null;
+    currentChapterIndex > 0 ? orderedChapters[currentChapterIndex - 1] : null;
   const nextChapter =
     currentChapterIndex >= 0 && currentChapterIndex < orderedChapters.length - 1
       ? orderedChapters[currentChapterIndex + 1]
       : null;
   const currentChapterInfo = chapters.find((c) => c.chapter_name === chapter);
+  const latestChapter =
+    chapters.length > 0 ? chapters[chapters.length - 1] : null;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -242,7 +213,9 @@ export default function ChapterReaderPage({
 
         if (prevChapter) {
           e.preventDefault();
-          router.push(`/manga/${comicSlug}/chapter/${prevChapter.chapter_name}`);
+          router.push(
+            `/manga/${comicSlug}/chapter/${prevChapter.chapter_name}`,
+          );
         }
         return;
       }
@@ -257,7 +230,9 @@ export default function ChapterReaderPage({
 
         if (nextChapter) {
           e.preventDefault();
-          router.push(`/manga/${comicSlug}/chapter/${nextChapter.chapter_name}`);
+          router.push(
+            `/manga/${comicSlug}/chapter/${nextChapter.chapter_name}`,
+          );
         }
       }
     };
@@ -274,6 +249,25 @@ export default function ChapterReaderPage({
     router,
   ]);
 
+  useEffect(() => {
+    if (!showChapterList) return;
+
+    const raf = window.requestAnimationFrame(() => {
+      const container = chapterListContainerRef.current;
+      const currentButton = currentChapterButtonRef.current;
+
+      if (!container || !currentButton) return;
+
+      const containerTop = container.getBoundingClientRect().top;
+      const currentButtonTop = currentButton.getBoundingClientRect().top;
+      const offset = currentButtonTop - containerTop;
+
+      container.scrollTop += offset;
+    });
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [showChapterList, chapter, chapterListChapters.length]);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -288,6 +282,40 @@ export default function ChapterReaderPage({
 
   const getImageUrlForPage = (imageFile: string) =>
     getChapterImageUrl(chapterPath, imageFile);
+
+  const handleBookmarkToggle = async () => {
+    if (!comic || isBookmarkLoading) return;
+
+    setIsBookmarkLoading(true);
+    try {
+      const result = await toggleMangaBookmark({
+        comicId: comic._id,
+        slug: comic.slug,
+        name: comic.name,
+        thumbUrl: comic.thumb_url,
+        status: comic.status,
+        comicUpdatedAt: comic.updatedAt,
+        categories: comic.category || [],
+        latestChapterName: latestChapter?.chapter_name,
+      });
+
+      if (!result.success) {
+        toast.error(result.message);
+        if (result.requiresSignIn) {
+          router.push("/sign-in");
+        }
+        return;
+      }
+
+      setIsBookmarked(result.bookmarked);
+      toast.success(result.message);
+    } catch (error) {
+      console.error("Failed to bookmark manga:", error);
+      toast.error("Could not update bookmark. Please try again.");
+    } finally {
+      setIsBookmarkLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -315,7 +343,7 @@ export default function ChapterReaderPage({
       className="min-h-screen bg-background"
       style={{ filter: `brightness(${brightness}%)` }}
     >
-      {/* Main Reader Content — no top padding since no top nav */}
+      {/* Main Reader Content â€” no top padding since no top nav */}
       <main className="pb-24">
         <section className="mx-auto max-w-7xl px-4 py-4 md:py-6">
           <div className="bg-card border border-border rounded-xl p-4 md:p-5">
@@ -479,14 +507,15 @@ export default function ChapterReaderPage({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="overflow-y-auto flex-1 py-2">
-              {chapters.map((ch, index) => {
+            <div ref={chapterListContainerRef} className="overflow-y-auto flex-1 py-2">
+              {chapterListChapters.map((ch, index) => {
                 const isCurrent = ch.chapter_name === chapter;
                 const isRead = readChapterNames.includes(ch.chapter_name);
 
                 return (
                   <button
                     key={`${ch.chapter_name}-${index}`}
+                    ref={isCurrent ? currentChapterButtonRef : undefined}
                     className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                       isCurrent
                         ? "text-primary font-semibold bg-primary/10"
@@ -609,130 +638,22 @@ export default function ChapterReaderPage({
         </div>
       )}
 
-      {/* Bottom Navigation Bar */}
-      <nav
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border transition-transform duration-300 ${
-          showBottomNav ? "translate-y-0" : "translate-y-full"
-        }`}
-      >
-        <div className="flex items-center justify-between px-3 h-16 max-w-3xl mx-auto gap-1">
-          {/* Home */}
-          <Link href="/">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 shrink-0"
-              title="Home"
-            >
-              <Home className="h-5 w-5" />
-            </Button>
-          </Link>
-
-          {/* Back to chapter list */}
-          <Link href={`/manga/${comic.slug}`}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 shrink-0"
-              title="Chapter List"
-            >
-              <List className="h-5 w-5" />
-            </Button>
-          </Link>
-
-          {/* Prev Chapter */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 shrink-0"
-            disabled={!prevChapter}
-            onClick={() =>
-              prevChapter &&
-              router.push(
-                `/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`,
-              )
-            }
-            title="Previous Chapter"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-
-          {/* Current Chapter Block — click to open chapter list */}
-          <button
-            className="flex-1 min-w-0 flex items-center justify-center gap-1.5 h-10 bg-secondary hover:bg-secondary/70 rounded-lg px-3 transition-colors"
-            onClick={() => setShowChapterList((v) => !v)}
-          >
-            <BookOpen className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-sm font-semibold text-foreground truncate">
-              Ch. {chapter}
-            </span>
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground rotate-90 shrink-0" />
-          </button>
-
-          {/* Next Chapter */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 shrink-0"
-            disabled={!nextChapter}
-            onClick={() =>
-              nextChapter &&
-              router.push(
-                `/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`,
-              )
-            }
-            title="Next Chapter"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-
-          {/* Bookmark */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-10 w-10 shrink-0 ${isBookmarked ? "text-primary" : ""}`}
-            onClick={() => setIsBookmarked((v) => !v)}
-            title="Bookmark"
-          >
-            {isBookmarked ? (
-              <BookmarkCheck className="h-5 w-5" />
-            ) : (
-              <Bookmark className="h-5 w-5" />
-            )}
-          </Button>
-
-          {/* Settings */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-10 w-10 shrink-0 ${showSettings ? "text-primary" : ""}`}
-            onClick={() => setShowSettings((v) => !v)}
-            title="Settings"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Page slider for horizontal mode */}
-        {readingMode === "horizontal" && (
-          <div className="flex items-center gap-3 px-4 pb-3">
-            <span className="text-xs text-muted-foreground w-6 text-right">
-              {currentPage}
-            </span>
-            <Slider
-              value={[currentPage]}
-              onValueChange={([v]) => setCurrentPage(v)}
-              min={1}
-              max={totalPages}
-              step={1}
-              className="flex-1"
-            />
-            <span className="text-xs text-muted-foreground w-6">
-              {totalPages}
-            </span>
-          </div>
-        )}
-      </nav>
+      <ChapterBottomNav
+        comicSlug={comic.slug}
+        chapter={chapter}
+        prevChapterName={prevChapter?.chapter_name ?? null}
+        nextChapterName={nextChapter?.chapter_name ?? null}
+        onToggleChapterList={() => setShowChapterList((v) => !v)}
+        isBookmarked={isBookmarked}
+        isBookmarkLoading={isBookmarkLoading}
+        onToggleBookmark={handleBookmarkToggle}
+        showSettings={showSettings}
+        onToggleSettings={() => setShowSettings((v) => !v)}
+        readingMode={readingMode}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onCurrentPageChange={setCurrentPage}
+      />
 
       {/* Scroll to top */}
       {readingMode !== "horizontal" && (
@@ -748,5 +669,3 @@ export default function ChapterReaderPage({
     </div>
   );
 }
-
-
