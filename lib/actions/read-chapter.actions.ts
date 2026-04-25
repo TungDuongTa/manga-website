@@ -41,7 +41,7 @@ export type ReadingExpStats = {
 };
 
 const MAX_LEVEL = 100;
-const EXP_PER_CHAPTER = 25;
+const EXP_PER_CHAPTER = 1;
 const EXP_PER_LEVEL = 100;
 
 const getCurrentUserId = async (): Promise<string | null> => {
