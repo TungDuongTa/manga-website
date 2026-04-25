@@ -13,7 +13,10 @@ const commentSchema = new Schema(
       index: true,
     },
     chapterName: { type: String, default: null },
+    parentCommentId: { type: String, default: null, index: true },
     content: { type: String, required: true, trim: true, maxlength: 1000 },
+    likeCount: { type: Number, default: 0 },
+    likedBy: { type: [String], default: [] },
   },
   {
     timestamps: true,
@@ -25,6 +28,7 @@ commentSchema.index({
   comicSlug: 1,
   targetType: 1,
   chapterName: 1,
+  parentCommentId: 1,
   createdAt: -1,
 });
 
