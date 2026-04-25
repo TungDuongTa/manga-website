@@ -30,6 +30,20 @@ export type ReadingHistoryComic = OTruyenComic & {
   latestReadChapterName: string;
 };
 
+export type ReadingExpStats = {
+  chaptersRead: number;
+  totalExp: number;
+  level: number;
+  currentLevelExp: number;
+  expToNextLevel: number;
+  progressPercent: number;
+  maxLevel: number;
+};
+
+const MAX_LEVEL = 100;
+const EXP_PER_CHAPTER = 25;
+const EXP_PER_LEVEL = 100;
+
 const getCurrentUserId = async (): Promise<string | null> => {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -42,6 +56,50 @@ const chapterLabelCollator = new Intl.Collator(undefined, {
   numeric: true,
   sensitivity: "base",
 });
+
+const calculateReadingExpStats = (chaptersRead: number): ReadingExpStats => {
+  const totalExp = Math.max(0, chaptersRead) * EXP_PER_CHAPTER;
+  const rawLevel = Math.floor(totalExp / EXP_PER_LEVEL) + 1;
+  const level = Math.min(MAX_LEVEL, rawLevel);
+
+  if (level >= MAX_LEVEL) {
+    return {
+      chaptersRead,
+      totalExp,
+      level: MAX_LEVEL,
+      currentLevelExp: EXP_PER_LEVEL,
+      expToNextLevel: 0,
+      progressPercent: 100,
+      maxLevel: MAX_LEVEL,
+    };
+  }
+
+  const currentLevelExp = totalExp % EXP_PER_LEVEL;
+  const expToNextLevel = EXP_PER_LEVEL - currentLevelExp;
+  const progressPercent = (currentLevelExp / EXP_PER_LEVEL) * 100;
+
+  return {
+    chaptersRead,
+    totalExp,
+    level,
+    currentLevelExp,
+    expToNextLevel,
+    progressPercent,
+    maxLevel: MAX_LEVEL,
+  };
+};
+
+export const getCurrentUserReadingExpStats = async (): Promise<ReadingExpStats> => {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return calculateReadingExpStats(0);
+  }
+
+  await connectToDatabase();
+  const chaptersRead = await ReadChapterModel.countDocuments({ userId });
+
+  return calculateReadingExpStats(chaptersRead);
+};
 
 const parseChapterNumber = (chapterName: string): number | null => {
   const parsed = Number.parseFloat(chapterName);
