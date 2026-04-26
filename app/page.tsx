@@ -119,28 +119,6 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-
-        {/* Genre Showcase */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-6">
-            Browse by Genre
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {categories.slice(0, 20).map((category, index) => (
-              <Link
-                key={category.id || index}
-                href={`/browse?genre=${category.slug}`}
-              >
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-4 py-2 text-sm"
-                >
-                  {category.name}
-                </Badge>
-              </Link>
-            ))}
-          </div>
-        </section>
       </main>
     </div>
   );
