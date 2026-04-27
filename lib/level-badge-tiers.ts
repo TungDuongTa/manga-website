@@ -15,6 +15,11 @@ type LevelBadgeTier = {
   icon: LucideIcon;
 };
 
+type LevelUsernameEffect = {
+  name: string;
+  className: string;
+};
+
 export const LEVEL_BADGE_TIERS: ReadonlyArray<LevelBadgeTier> = [
   {
     title: "Novice",
@@ -78,11 +83,35 @@ export const LEVEL_BADGE_TIERS: ReadonlyArray<LevelBadgeTier> = [
   },
 ] as const;
 
-export const getLevelBadgeTier = (level: number): LevelBadgeTier => {
-  const tierIndex = Math.min(
+const LEVEL_USERNAME_EFFECTS: ReadonlyArray<LevelUsernameEffect> = [
+  { name: "Mist", className: "username-mask username-mask--mist" },
+  { name: "Ember", className: "username-mask username-mask--ember" },
+  { name: "Steel", className: "username-mask username-mask--steel" },
+  { name: "Solar", className: "username-mask username-mask--solar" },
+  { name: "Plasma", className: "username-mask username-mask--plasma" },
+  { name: "Tide", className: "username-mask username-mask--tide" },
+  { name: "Arcane", className: "username-mask username-mask--arcane" },
+  { name: "Inferno", className: "username-mask username-mask--inferno" },
+  { name: "Aurora", className: "username-mask username-mask--aurora" },
+  {
+    name: "Thunder",
+    className: "username-mask username-mask--thunder",
+  },
+] as const;
+
+const getTierIndex = (level: number) =>
+  Math.min(
     LEVEL_BADGE_TIERS.length - 1,
     Math.floor((Math.max(level, 1) - 1) / 10),
   );
 
+export const getLevelBadgeTier = (level: number): LevelBadgeTier => {
+  const tierIndex = getTierIndex(level);
+
   return LEVEL_BADGE_TIERS[tierIndex];
+};
+
+export const getLevelUsernameEffect = (level: number): LevelUsernameEffect => {
+  const tierIndex = getTierIndex(level);
+  return LEVEL_USERNAME_EFFECTS[tierIndex];
 };

@@ -57,7 +57,7 @@ export function HeroSectionApi({ featuredComics }: HeroSectionApiProps) {
       {/* Right-side manga cover — animates in from right on slide change */}
       <div
         key={`img-${currentIndex}`}
-        className="absolute inset-y-0 right-0 w-[55%] md:w-[48%] hero-slide-right"
+        className="absolute inset-y-0 right-0 w-full md:w-[48%] hero-slide-right"
       >
         <Image
           src={getImageUrl(currentComic.thumb_url)}
@@ -67,10 +67,10 @@ export function HeroSectionApi({ featuredComics }: HeroSectionApiProps) {
           priority
           unoptimized
         />
-        {/* Mask: strong fade on the left, subtle fade on top/bottom edges */}
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/10 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/20" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/5" />
+        {/* Image masks so the cover blends smoothly with the layout */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-transparent via-background/25 to-background/95" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/60 via-transparent to-background/70" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_50%,transparent_35%,var(--background)_100%)] opacity-35" />
       </div>
 
       {/* Subtle dark tint over the entire section so left text is always legible */}

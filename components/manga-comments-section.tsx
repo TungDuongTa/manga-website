@@ -21,7 +21,7 @@ import {
   type CommentFeedItem,
   type CommentViewer,
 } from "@/lib/actions/comment.actions";
-import { getLevelBadgeTier } from "@/lib/level-badge-tiers";
+import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -126,6 +126,7 @@ export function MangaCommentsSection({
   );
 
   const isChapterScope = Boolean(chapterName);
+  const viewerUsernameEffect = viewer ? getLevelUsernameEffect(viewer.level) : null;
 
   const scopeMeta = useMemo(
     () =>
@@ -496,76 +497,90 @@ export function MangaCommentsSection({
     );
   };
 
-  const renderCommentRow = (comment: CommentFeedItem, nested = false) => (
-    <div
-      className={cn(
-        "flex items-start gap-3",
-        nested && "rounded-lg border border-border/55 bg-background/30 p-3",
-      )}
-    >
-      <Avatar className={cn("mt-0.5 border border-border", nested ? "h-8 w-8" : "h-9 w-9")}>
-        <AvatarImage src={comment.userImage} alt={comment.userName} />
-        <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
-      </Avatar>
+  const renderCommentRow = (comment: CommentFeedItem, nested = false) => {
+    const usernameEffect = getLevelUsernameEffect(comment.userLevel);
 
-      <div className="min-w-0 flex-1">
-        <div className="mb-1 flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-foreground text-sm">{comment.userName}</span>
-          <Badge
-            variant="outline"
-            className={cn(
-              "h-5 rounded-full px-1.5 text-[10px] font-semibold",
-              getLevelBadgeTier(comment.userLevel).className,
-            )}
-          >
-            Lv {comment.userLevel}
-          </Badge>
-          {comment.chapterName && (
-            <Badge
-              variant="secondary"
-              className="bg-primary/15 text-primary hover:bg-primary/15"
+    return (
+      <div
+        className={cn(
+          "flex items-start gap-3",
+          nested && "rounded-lg border border-border/55 bg-background/30 p-3",
+        )}
+      >
+        <Avatar className={cn("mt-0.5 border border-border", nested ? "h-8 w-8" : "h-9 w-9")}>
+          <AvatarImage src={comment.userImage} alt={comment.userName} />
+          <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "text-sm font-semibold tracking-wide",
+                usernameEffect.className,
+              )}
+              title={`${usernameEffect.name} username effect`}
             >
-              Chapter {comment.chapterName}
+              {comment.userName}
+            </span>
+            <Badge
+              variant="outline"
+              className={cn(
+                "h-5 rounded-full px-1.5 text-[10px] font-semibold",
+                getLevelBadgeTier(comment.userLevel).className,
+              )}
+            >
+              Lv {comment.userLevel}
             </Badge>
-          )}
-          <span className="text-xs text-muted-foreground">
-            {getRelativeTime(comment.createdAt)}
-          </span>
-        </div>
-
-        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/95">
-          {comment.content}
-        </p>
-
-        <div className="mt-1.5 flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-7 gap-1.5 px-2 text-xs",
-              comment.likedByViewer && "text-primary",
+            {comment.chapterName && (
+              <Badge
+                variant="secondary"
+                className="bg-primary/15 text-primary hover:bg-primary/15"
+              >
+                Chapter {comment.chapterName}
+              </Badge>
             )}
-            disabled={likingCommentIds.has(comment.id)}
-            onClick={() => handleToggleLike(comment)}
-          >
-            <ThumbsUp className={cn("h-3.5 w-3.5", comment.likedByViewer && "fill-current")} />
-            {comment.likeCount}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 px-2 text-xs"
-            onClick={() => handleStartReply(comment)}
-          >
-            <CornerDownRight className="h-3.5 w-3.5" />
-            Reply
-          </Button>
+            <span className="text-xs text-muted-foreground">
+              {getRelativeTime(comment.createdAt)}
+            </span>
+          </div>
+
+          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/95">
+            {comment.content}
+          </p>
+
+          <div className="mt-1.5 flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-7 gap-1.5 px-2 text-xs",
+                comment.likedByViewer && "text-primary",
+              )}
+              disabled={likingCommentIds.has(comment.id)}
+              onClick={() => handleToggleLike(comment)}
+            >
+              <ThumbsUp
+                className={cn("h-3.5 w-3.5", comment.likedByViewer && "fill-current")}
+              />
+              {comment.likeCount}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2 text-xs"
+              onClick={() => handleStartReply(comment)}
+            >
+              <CornerDownRight className="h-3.5 w-3.5" />
+              Reply
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderChildren = (parentId: string, depth = 1) => {
     const children = childrenByParentId.get(parentId) || [];
@@ -649,7 +664,19 @@ export function MangaCommentsSection({
               </Avatar>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">{viewer.name}</p>
+                  <p
+                    className={cn(
+                      "text-sm font-semibold tracking-wide",
+                      viewerUsernameEffect?.className,
+                    )}
+                    title={
+                      viewerUsernameEffect
+                        ? `${viewerUsernameEffect.name} username effect`
+                        : undefined
+                    }
+                  >
+                    {viewer.name}
+                  </p>
                   <Badge
                     variant="outline"
                     className={cn(
