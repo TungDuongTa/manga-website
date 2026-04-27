@@ -8,6 +8,7 @@ import { signUpWithEmail } from "@/lib/actions/auth.actions";
 import { signUpSchema } from "@/lib/zod/auth.schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -119,6 +120,12 @@ const SignUp = () => {
             </form>
 
             <div className="mt-6 pt-6 border-t border-border">
+              <p className="text-center text-sm text-muted-foreground mb-3">
+                Already have an account?{" "}
+                <Link href="/sign-in" className="text-primary hover:underline">
+                  Sign in
+                </Link>
+              </p>
               <p className="text-center text-sm text-muted-foreground mb-4">
                 Or continue with
               </p>

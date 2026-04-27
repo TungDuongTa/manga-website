@@ -158,8 +158,8 @@
 
 /* Custom scrollbar for manga theme */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
@@ -167,7 +167,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted);
+  background: var(--muted-foreground);
   border-radius: 4px;
 }
 
