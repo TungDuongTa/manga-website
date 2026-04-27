@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -37,12 +36,9 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <BookOpen className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-bold text-primary logo-glow">
-                VuaTruyen
+            <Link href="/" className="mb-4 inline-flex items-center">
+              <span className="text-xl md:text-3xl font-bold brand-pink-mask">
+                Vuatruyen
               </span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -122,7 +118,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            {currentYear} VuaTruyen. All rights reserved.
+            {currentYear} Vuatruyen. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
             All manga, manhwa, and manhua content are the property of their

@@ -177,6 +177,26 @@
     0 0 40px oklch(0.5 0.2 250 / 0.2);
 }
 
+/* Header brand masked with pink.gif */
+.brand-pink-mask {
+  color: #ec4899;
+  text-shadow: 0 0 12px rgb(236 72 153 / 0.38);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .brand-pink-mask {
+    background-image: url("/pink.gif");
+    background-repeat: repeat;
+    background-size: 220px auto;
+    background-position: center;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+}
+
 /* Username masked text effects */
 @keyframes username-shimmer {
   from {
