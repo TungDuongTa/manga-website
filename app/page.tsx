@@ -3,16 +3,17 @@ import { RankingSidebarApi } from "@/components/ranking-sidebar-api";
 import { CommentsSection } from "@/components/comments-section";
 import { MangaCardApi } from "@/components/manga-card-api";
 import { getHomeData, getListByType } from "@/lib/actions/otruyen-actions";
-import { recentComments } from "@/lib/manga-data";
+import { getRecentTopLevelComments } from "@/lib/actions/comment.actions";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 export default async function HomePage() {
   // Fetch data in parallel
-  const [homeData, latestData, completedData] = await Promise.all([
+  const [homeData, latestData, completedData, recentComments] = await Promise.all([
     getHomeData(),
     getListByType("truyen-moi", 1),
     getListByType("hoan-thanh", 1),
+    getRecentTopLevelComments(10),
   ]);
 
   const featuredComics = homeData?.items || [];
@@ -84,7 +85,7 @@ export default async function HomePage() {
           {/* Right Side - Rankings & Comments */}
           <div className="space-y-6">
             <RankingSidebarApi />
-            <CommentsSection comments={recentComments} compact />
+            <CommentsSection comments={recentComments} />
           </div>
         </section>
 
