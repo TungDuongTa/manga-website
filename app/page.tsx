@@ -12,15 +12,13 @@ import {
 import { recentComments } from "@/lib/manga-data";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 export default async function HomePage() {
   // Fetch data in parallel
-  const [homeData, latestData, completedData, categories] = await Promise.all([
+  const [homeData, latestData, completedData] = await Promise.all([
     getHomeData(),
     getListByType("truyen-moi", 1),
     getListByType("hoan-thanh", 1),
-    getCategories(),
   ]);
 
   const featuredComics = homeData?.items || [];

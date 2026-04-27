@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { auth } from "@/lib/better-auth/auth";
+import { getVisiblePages } from "@/lib/pagination";
 import {
   getCurrentUserBookmarks,
   removeMangaBookmark,
@@ -32,23 +33,6 @@ const normalizePage = (value: string | undefined, totalPages: number) => {
   const parsed = Number.parseInt(value || "1", 10);
   if (!Number.isFinite(parsed) || parsed < 1) return 1;
   return Math.min(parsed, totalPages);
-};
-
-const getVisiblePages = (currentPage: number, totalPages: number) => {
-  if (totalPages <= 5) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-  if (currentPage <= 3) return [1, 2, 3, 4, 5];
-  if (currentPage >= totalPages - 2) {
-    return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-  }
-  return [
-    currentPage - 2,
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-    currentPage + 2,
-  ];
 };
 
 interface BookmarksPageProps {

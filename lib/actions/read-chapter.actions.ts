@@ -7,6 +7,7 @@ import { connectToDatabase } from "@/database/mongoose";
 import { ReadChapterModel } from "@/database/models/read-chapter.model";
 import { BookmarkModel } from "@/database/models/bookmark.model";
 import { getComicDetail } from "@/lib/actions/otruyen-actions";
+import { compareChapterNames } from "@/lib/chapter-utils";
 import type { Category, OTruyenComic } from "@/types/otruyen-types";
 
 type MarkChapterAsReadInput = {
@@ -52,11 +53,6 @@ const getCurrentUserId = async (): Promise<string | null> => {
   return session?.user?.id ?? null;
 };
 
-const chapterLabelCollator = new Intl.Collator(undefined, {
-  numeric: true,
-  sensitivity: "base",
-});
-
 const calculateReadingExpStats = (chaptersRead: number): ReadingExpStats => {
   const totalExp = Math.max(0, chaptersRead) * EXP_PER_CHAPTER;
   const rawLevel = Math.floor(totalExp / EXP_PER_LEVEL) + 1;
@@ -101,26 +97,6 @@ export const getCurrentUserReadingExpStats = async (): Promise<ReadingExpStats> 
   return calculateReadingExpStats(chaptersRead);
 };
 
-const parseChapterNumber = (chapterName: string): number | null => {
-  const parsed = Number.parseFloat(chapterName);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const compareChapterProgress = (a: string, b: string): number => {
-  if (a === b) return 0;
-
-  const aNum = parseChapterNumber(a);
-  const bNum = parseChapterNumber(b);
-
-  if (aNum !== null && bNum !== null) {
-    return aNum - bNum;
-  }
-
-  if (aNum !== null) return 1;
-  if (bNum !== null) return -1;
-
-  return chapterLabelCollator.compare(a, b);
-};
 
 export const getReadChapterNames = async (
   comicSlug: string,
@@ -201,10 +177,7 @@ export const getCurrentUserReadingHistory = async (): Promise<
       existing.latestReadAt = readAtIso;
     }
 
-    if (
-      compareChapterProgress(row.chapterName, existing.latestReadChapterName) >
-      0
-    ) {
+    if (compareChapterNames(row.chapterName, existing.latestReadChapterName) > 0) {
       existing.latestReadChapterName = row.chapterName;
     }
 

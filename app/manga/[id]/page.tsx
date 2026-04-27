@@ -45,7 +45,6 @@ export default function MangaDetailPage({
   const router = useRouter();
   const { id } = use(params);
   const [comic, setComic] = useState<ComicDetailItem | null>(null);
-  const [relatedComics, setRelatedComics] = useState<OTruyenComic[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [chaptersOrder, setChaptersOrder] = useState<"desc" | "asc">("desc");
@@ -230,7 +229,7 @@ export default function MangaDetailPage({
               {/* Genres */}
               <div className="flex flex-wrap gap-2 mb-6">
                 {comic.category.map((cat) => (
-                  <Link key={cat.id} href={`/browse?genre=${cat.slug}`}>
+                  <Link key={cat.id} href={`/browse?genres=${cat.slug}`}>
                     <Badge
                       variant="secondary"
                       className="cursor-pointer hover:bg-secondary/80"
@@ -398,24 +397,6 @@ export default function MangaDetailPage({
           <section className="mt-8">
             <MangaCommentsSection comicSlug={comic.slug || id} />
           </section>
-
-          {/* Related Manga */}
-          {relatedComics.length > 0 && (
-            <section className="mt-12 mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-6">
-                You May Also Like
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
-                {relatedComics.map((c) => (
-                  <MangaCardApi
-                    key={c._id}
-                    comic={c}
-                    showLatestChapter={false}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
         </div>
       </main>
     </div>
