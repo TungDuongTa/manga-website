@@ -7,7 +7,6 @@ import {
   Search,
   Menu,
   X,
-  BookOpen,
   Bookmark,
   Clock,
   Home,
@@ -85,12 +84,9 @@ export function Header({ user }: HeaderProps) {
             {/* Logo */}
             <Link
               href="/"
-              className="flex shrink-0 items-center gap-2 rounded-xl px-1 py-1 transition-colors hover:bg-secondary/30"
+              className="flex shrink-0 items-center rounded-xl px-2 py-1 transition-colors hover:bg-secondary/30"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/75 shadow-md shadow-primary/20">
-                <BookOpen className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="hidden text-xl font-bold tracking-tight text-primary logo-glow sm:block">
+              <span className=" text-2xl md:text-3xl font-bold tracking-tight brand-pink-mask ">
                 VuaTruyen
               </span>
             </Link>
@@ -132,7 +128,7 @@ export function Header({ user }: HeaderProps) {
 
           {/* Desktop Navigation (Second Row) */}
           <div className="hidden border-t border-border/70 bg-gradient-to-r from-secondary/25 via-secondary/10 to-secondary/25 lg:block">
-            <nav className="flex h-12 items-center justify-center gap-1">
+            <nav className="flex h-12 items-center justify-start gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
