@@ -42,31 +42,31 @@
 
 /* Dark Blue Manga Theme */
 .dark {
-  --background: oklch(0.13 0.025 250);
+  --background: oklch(0.11 0.025 250 / 0.58);
   --foreground: oklch(0.95 0.01 250);
-  --card: oklch(0.16 0.03 250);
+  --card: oklch(0.16 0.03 250 / 0.74);
   --card-foreground: oklch(0.95 0.01 250);
-  --popover: oklch(0.14 0.025 250);
+  --popover: oklch(0.14 0.025 250 / 0.88);
   --popover-foreground: oklch(0.95 0.01 250);
   --primary: oklch(0.65 0.18 250);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.22 0.035 250);
+  --secondary: oklch(0.22 0.035 250 / 0.62);
   --secondary-foreground: oklch(0.9 0.01 250);
-  --muted: oklch(0.2 0.03 250);
+  --muted: oklch(0.2 0.03 250 / 0.62);
   --muted-foreground: oklch(0.65 0.02 250);
   --accent: oklch(0.7 0.2 180);
   --accent-foreground: oklch(0.1 0.02 250);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.25 0.04 250);
-  --input: oklch(0.2 0.03 250);
+  --input: oklch(0.2 0.03 250 / 0.72);
   --ring: oklch(0.65 0.18 250);
   --chart-1: oklch(0.65 0.18 250);
   --chart-2: oklch(0.7 0.2 180);
   --chart-3: oklch(0.75 0.15 60);
   --chart-4: oklch(0.6 0.2 320);
   --chart-5: oklch(0.7 0.18 30);
-  --sidebar: oklch(0.11 0.02 250);
+  --sidebar: oklch(0.11 0.02 250 / 0.8);
   --sidebar-foreground: oklch(0.95 0.01 250);
   --sidebar-primary: oklch(0.65 0.18 250);
   --sidebar-primary-foreground: oklch(0.98 0 0);
@@ -123,6 +123,27 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image: none;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background-image:
+      linear-gradient(
+        to bottom,
+        oklch(0.08 0.02 250 / 0.42),
+        oklch(0.06 0.015 250 / 0.58)
+      ),
+      url("/body-bg.jpg");
+  }
+
+  .dark .bg-background,
+  .dark .bg-card,
+  .dark .bg-popover {
+    backdrop-filter: blur(2px);
   }
 }
 #nprogress .bar {

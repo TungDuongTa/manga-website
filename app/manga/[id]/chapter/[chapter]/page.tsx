@@ -235,7 +235,7 @@ export default function ChapterReaderPage({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -243,7 +243,7 @@ export default function ChapterReaderPage({
 
   if (!comic || chapterImages.length === 0) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold text-foreground mb-4">
           Chapter Not Found
         </h1>
@@ -255,7 +255,7 @@ export default function ChapterReaderPage({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Main Reader Content  no top padding since no top nav */}
       <main className="pb-24">
         <section className="mx-auto max-w-7xl px-4 py-4 md:py-6">

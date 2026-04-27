@@ -85,7 +85,7 @@ export default function MangaDetailPage({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <main className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
@@ -95,7 +95,7 @@ export default function MangaDetailPage({
 
   if (!comic) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <main className="flex flex-col items-center justify-center min-h-[60vh]">
           <h1 className="text-2xl font-bold text-foreground mb-4">
             Manga Not Found
@@ -155,7 +155,7 @@ export default function MangaDetailPage({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <main>
         {/* Hero Banner */}
         <div className="relative h-64 md:h-80 overflow-hidden">

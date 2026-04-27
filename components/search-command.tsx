@@ -193,13 +193,14 @@ export function SearchTrigger({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 w-full max-w-md px-4 py-2.5 bg-secondary hover:bg-secondary/80 rounded-lg text-muted-foreground transition-colors"
+      className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-card/70 px-4 py-2.5 text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/60"
     >
-      <Search className="h-4 w-4" />
+      <Search className="h-4 w-4 shrink-0" />
       <span className="text-sm flex-1 text-left">Search manga...</span>
-      <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted px-1.5 text-xs text-muted-foreground">
-        <span className="text-xs">⌘</span>K
+      <kbd className="hidden h-6 items-center rounded-md border border-border/80 bg-secondary/80 px-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:inline-flex">
+        Ctrl K
       </kbd>
     </button>
   );
 }
+
