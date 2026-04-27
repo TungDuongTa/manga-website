@@ -31,6 +31,7 @@ import {
   getByCategory,
   getCategories,
 } from "@/lib/actions/otruyen-actions";
+import { getVisiblePages } from "@/lib/pagination";
 import { OTruyenComic, Category, Pagination } from "@/types/otruyen-types";
 
 export default function BrowsePage() {
@@ -174,6 +175,7 @@ export default function BrowsePage() {
   const totalPages = pagination
     ? Math.ceil(pagination.totalItems / pagination.totalItemsPerPage)
     : 1;
+  const visiblePages = getVisiblePages(currentPage, totalPages);
 
   return (
     <div className="min-h-screen bg-background">
@@ -417,31 +419,16 @@ export default function BrowsePage() {
                 </Button>
 
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum: number;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={
-                          pageNum === currentPage ? "default" : "outline"
-                        }
-                        size="icon"
-                        onClick={() => handlePageChange(pageNum)}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
+                  {visiblePages.map((pageNum) => (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === currentPage ? "default" : "outline"}
+                      size="icon"
+                      onClick={() => handlePageChange(pageNum)}
+                    >
+                      {pageNum}
+                    </Button>
+                  ))}
                 </div>
 
                 <Button

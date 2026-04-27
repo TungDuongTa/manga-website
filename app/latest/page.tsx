@@ -4,6 +4,7 @@ import { MangaCardApi } from "@/components/manga-card-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getListByType } from "@/lib/actions/otruyen-actions";
+import { getVisiblePages } from "@/lib/pagination";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default async function LatestPage({ searchParams }: PageProps) {
   const totalPages = pagination
     ? Math.ceil(pagination.totalItems / pagination.totalItemsPerPage)
     : 1;
+  const visiblePages = getVisiblePages(currentPage, totalPages);
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,29 +87,16 @@ export default async function LatestPage({ searchParams }: PageProps) {
             )}
 
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum: number;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-
-                return (
-                  <Link key={pageNum} href={`/latest?page=${pageNum}`}>
-                    <Button
-                      variant={pageNum === currentPage ? "default" : "outline"}
-                      size="icon"
-                    >
-                      {pageNum}
-                    </Button>
-                  </Link>
-                );
-              })}
+              {visiblePages.map((pageNum) => (
+                <Link key={pageNum} href={`/latest?page=${pageNum}`}>
+                  <Button
+                    variant={pageNum === currentPage ? "default" : "outline"}
+                    size="icon"
+                  >
+                    {pageNum}
+                  </Button>
+                </Link>
+              ))}
             </div>
 
             {currentPage < totalPages ? (
