@@ -1,14 +1,8 @@
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 import { HeroSectionApi } from "@/components/hero-section-api";
 import { RankingSidebarApi } from "@/components/ranking-sidebar-api";
 import { CommentsSection } from "@/components/comments-section";
 import { MangaCardApi } from "@/components/manga-card-api";
-import {
-  getHomeData,
-  getListByType,
-  getCategories,
-} from "@/lib/actions/otruyen-actions";
+import { getHomeData, getListByType } from "@/lib/actions/otruyen-actions";
 import { recentComments } from "@/lib/manga-data";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
@@ -89,7 +83,7 @@ export default async function HomePage() {
 
           {/* Right Side - Rankings & Comments */}
           <div className="space-y-6">
-            <RankingSidebarApi comics={featuredComics} />
+            <RankingSidebarApi />
             <CommentsSection comments={recentComments} compact />
           </div>
         </section>
