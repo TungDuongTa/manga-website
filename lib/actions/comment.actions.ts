@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
 import { auth } from "@/lib/better-auth/auth";
 import { connectToDatabase } from "@/database/mongoose";
+import { BookmarkModel } from "@/database/models/bookmark.model";
 import { CommentModel } from "@/database/models/comment.model";
+import { MangaViewModel } from "@/database/models/manga-view.model";
+import { MangaViewStatModel } from "@/database/models/manga-view-stat.model";
 import { ReadChapterModel } from "@/database/models/read-chapter.model";
 
 export type CommentViewer = {
@@ -28,6 +31,18 @@ export type CommentFeedItem = {
   userLevel: number;
   likeCount: number;
   likedByViewer: boolean;
+  createdAt: string;
+};
+
+export type HomeRecentCommentItem = {
+  id: string;
+  userName: string;
+  userImage: string;
+  content: string;
+  comicSlug: string;
+  comicName: string;
+  chapterName: string | null;
+  likeCount: number;
   createdAt: string;
 };
 
@@ -57,6 +72,15 @@ type ToggleCommentLikeResult = {
 const COMMENT_MAX_LENGTH = 1000;
 const MAX_LEVEL = 100;
 const EXP_PER_LEVEL = 100;
+const DEFAULT_RECENT_HOME_COMMENT_LIMIT = 10;
+const MAX_RECENT_HOME_COMMENT_LIMIT = 30;
+const TOP_LEVEL_COMMENT_QUERY = {
+  $or: [
+    { parentCommentId: null },
+    { parentCommentId: { $exists: false } },
+    { parentCommentId: "" },
+  ],
+};
 const COMMENT_PROJECTION =
   "_id userId userName userImage content comicSlug targetType chapterName parentCommentId likeCount likedBy createdAt updatedAt";
 
@@ -64,6 +88,92 @@ const toLevel = (chaptersRead: number) => {
   const safeCount = Math.max(0, chaptersRead);
   const rawLevel = Math.floor(safeCount / EXP_PER_LEVEL) + 1;
   return Math.min(MAX_LEVEL, rawLevel);
+};
+
+const toComicDisplayNameFromSlug = (slug: string) =>
+  slug
+    .split("-")
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((chunk) => `${chunk.charAt(0).toUpperCase()}${chunk.slice(1)}`)
+    .join(" ");
+
+const getComicNameMap = async (comicSlugs: string[]) => {
+  const uniqueSlugs = Array.from(
+    new Set(comicSlugs.map((slug) => String(slug || "").trim()).filter(Boolean)),
+  );
+
+  const map = new Map<string, string>();
+  if (uniqueSlugs.length === 0) return map;
+
+  const setComicName = (slugValue: unknown, nameValue: unknown) => {
+    const slug = String(slugValue || "").trim();
+    const name = String(nameValue || "").trim();
+    if (!slug || !name || map.has(slug)) return;
+    map.set(slug, name);
+  };
+
+  const [viewStats, views, reads, bookmarks] = await Promise.all([
+    MangaViewStatModel.find({
+      comicSlug: { $in: uniqueSlugs },
+      comicName: { $nin: ["", null] },
+    })
+      .select("comicSlug comicName")
+      .lean(),
+    MangaViewModel.aggregate([
+      {
+        $match: {
+          comicSlug: { $in: uniqueSlugs },
+          comicName: { $nin: ["", null] },
+        },
+      },
+      { $sort: { viewedAt: -1, updatedAt: -1 } },
+      { $group: { _id: "$comicSlug", comicName: { $first: "$comicName" } } },
+    ]),
+    ReadChapterModel.aggregate([
+      {
+        $match: {
+          comicSlug: { $in: uniqueSlugs },
+          comicName: { $nin: ["", null] },
+        },
+      },
+      { $sort: { readAt: -1, updatedAt: -1 } },
+      { $group: { _id: "$comicSlug", comicName: { $first: "$comicName" } } },
+    ]),
+    BookmarkModel.aggregate([
+      {
+        $match: {
+          slug: { $in: uniqueSlugs },
+          name: { $nin: ["", null] },
+        },
+      },
+      { $sort: { updatedAt: -1 } },
+      { $group: { _id: "$slug", comicName: { $first: "$name" } } },
+    ]),
+  ]);
+
+  for (const doc of viewStats as Array<{ comicSlug: string; comicName: string }>) {
+    setComicName(doc.comicSlug, doc.comicName);
+  }
+
+  for (const doc of views as Array<{ _id: string; comicName: string }>) {
+    setComicName(doc._id, doc.comicName);
+  }
+
+  for (const doc of reads as Array<{ _id: string; comicName: string }>) {
+    setComicName(doc._id, doc.comicName);
+  }
+
+  for (const doc of bookmarks as Array<{ _id: string; comicName: string }>) {
+    setComicName(doc._id, doc.comicName);
+  }
+
+  for (const slug of uniqueSlugs) {
+    if (map.has(slug)) continue;
+    map.set(slug, toComicDisplayNameFromSlug(slug));
+  }
+
+  return map;
 };
 
 const getUserLevelMap = async (userIds: string[]): Promise<Map<string, number>> => {
@@ -235,6 +345,56 @@ export const getChapterComments = async (
   return docs.map((doc: any) => toFeedItem(doc, user?.id, levelMap));
 };
 
+export const getRecentTopLevelComments = async (
+  limit = DEFAULT_RECENT_HOME_COMMENT_LIMIT,
+): Promise<HomeRecentCommentItem[]> => {
+  const normalizedLimit = Number.isFinite(limit) ? Math.floor(limit) : 0;
+  const safeLimit = Math.min(
+    MAX_RECENT_HOME_COMMENT_LIMIT,
+    Math.max(1, normalizedLimit || DEFAULT_RECENT_HOME_COMMENT_LIMIT),
+  );
+
+  try {
+    await connectToDatabase();
+
+    const docs = await CommentModel.find(TOP_LEVEL_COMMENT_QUERY)
+      .select(COMMENT_PROJECTION)
+      .sort({ createdAt: -1 })
+      .limit(safeLimit)
+      .lean();
+
+    const comicNameMap = await getComicNameMap(
+      docs.map((doc: any) => String(doc.comicSlug || "")),
+    );
+
+    return docs.map((doc: any) => {
+      const comicSlug = String(doc.comicSlug || "").trim();
+      const comicName =
+        comicNameMap.get(comicSlug) ||
+        toComicDisplayNameFromSlug(comicSlug) ||
+        comicSlug ||
+        "Unknown Manga";
+
+      return {
+        id: String(doc._id),
+        userName: doc.userName || "User",
+        userImage: doc.userImage || "",
+        content: doc.content || "",
+        comicSlug,
+        comicName,
+        chapterName: doc.chapterName || null,
+        likeCount: Number.isFinite(doc.likeCount) ? doc.likeCount : 0,
+        createdAt: new Date(
+          doc.createdAt || doc.updatedAt || Date.now(),
+        ).toISOString(),
+      };
+    });
+  } catch (error) {
+    console.error("Failed to load recent top-level comments:", error);
+    return [];
+  }
+};
+
 export const createComment = async (
   input: CreateCommentInput,
 ): Promise<CreateCommentResult> => {
@@ -336,6 +496,7 @@ export const createComment = async (
   const levelMap = await getUserLevelMap([user.id]);
 
   revalidatePath(`/manga/${comicSlug}`);
+  revalidatePath("/");
   if (resolvedTargetType === "chapter" && resolvedChapterName) {
     revalidatePath(`/manga/${comicSlug}/chapter/${resolvedChapterName}`);
   }
@@ -398,6 +559,7 @@ export const toggleCommentLike = async (
   const likeCount = Math.max(0, updated?.likeCount || 0);
 
   revalidatePath(`/manga/${existing.comicSlug}`);
+  revalidatePath("/");
   if (existing.targetType === "chapter" && existing.chapterName) {
     revalidatePath(`/manga/${existing.comicSlug}/chapter/${existing.chapterName}`);
   }
