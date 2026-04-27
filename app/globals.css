@@ -177,6 +177,137 @@
     0 0 40px oklch(0.5 0.2 250 / 0.2);
 }
 
+/* Username masked text effects */
+@keyframes username-shimmer {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 220% 50%;
+  }
+}
+
+@keyframes username-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.14);
+  }
+}
+
+.username-mask {
+  --username-start: #cbd5e1;
+  --username-mid: #f8fafc;
+  --username-end: #94a3b8;
+  --username-glow-rgb: 148 163 184;
+  --username-speed: 6s;
+  --username-pulse: 3.6s;
+  color: var(--username-mid);
+  text-shadow:
+    0 0 10px rgb(var(--username-glow-rgb) / 0.5),
+    0 0 20px rgb(var(--username-glow-rgb) / 0.3);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .username-mask {
+    background-image: linear-gradient(
+      118deg,
+      var(--username-start),
+      var(--username-mid) 40%,
+      var(--username-end) 56%,
+      var(--username-mid) 72%,
+      var(--username-start)
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation:
+      username-shimmer var(--username-speed) linear infinite,
+      username-pulse var(--username-pulse) ease-in-out infinite;
+  }
+}
+
+.username-mask--mist {
+  --username-start: #cbd5e1;
+  --username-mid: #f8fafc;
+  --username-end: #94a3b8;
+  --username-glow-rgb: 148 163 184;
+}
+
+.username-mask--ember {
+  --username-start: #f59e0b;
+  --username-mid: #fcd34d;
+  --username-end: #fb7185;
+  --username-glow-rgb: 245 158 11;
+  --username-speed: 5.4s;
+}
+
+.username-mask--steel {
+  --username-start: #e4e4e7;
+  --username-mid: #ffffff;
+  --username-end: #a1a1aa;
+  --username-glow-rgb: 212 212 216;
+}
+
+.username-mask--solar {
+  --username-start: #fde047;
+  --username-mid: #fef9c3;
+  --username-end: #fb923c;
+  --username-glow-rgb: 250 204 21;
+  --username-speed: 5s;
+}
+
+.username-mask--plasma {
+  --username-start: #67e8f9;
+  --username-mid: #e0f2fe;
+  --username-end: #818cf8;
+  --username-glow-rgb: 34 211 238;
+}
+
+.username-mask--tide {
+  --username-start: #60a5fa;
+  --username-mid: #dbeafe;
+  --username-end: #818cf8;
+  --username-glow-rgb: 59 130 246;
+}
+
+.username-mask--arcane {
+  --username-start: #c4b5fd;
+  --username-mid: #f5d0fe;
+  --username-end: #a78bfa;
+  --username-glow-rgb: 167 139 250;
+  --username-speed: 4.8s;
+}
+
+.username-mask--inferno {
+  --username-start: #fb7185;
+  --username-mid: #fdba74;
+  --username-end: #facc15;
+  --username-glow-rgb: 251 113 133;
+  --username-speed: 4.6s;
+}
+
+.username-mask--aurora {
+  --username-start: #34d399;
+  --username-mid: #a7f3d0;
+  --username-end: #67e8f9;
+  --username-glow-rgb: 16 185 129;
+  --username-speed: 4.7s;
+}
+
+.username-mask--thunder {
+  --username-start: #22d3ee;
+  --username-mid: #fef08a;
+  --username-end: #f472b6;
+  --username-glow-rgb: 34 211 238;
+  --username-speed: 4.2s;
+  --username-pulse: 2.6s;
+}
+
 /* Custom scrollbar for manga theme */
 ::-webkit-scrollbar {
   width: 12px;

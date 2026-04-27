@@ -18,7 +18,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { signOut, updateUserProfile } from "@/lib/actions/auth.actions";
-import { getLevelBadgeTier } from "@/lib/level-badge-tiers";
+import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +80,7 @@ export function ProfilePageClient({
   const isMaxLevel = readingExp.level >= readingExp.maxLevel;
   const nextLevel = Math.min(readingExp.level + 1, readingExp.maxLevel);
   const levelBadgeTier = getLevelBadgeTier(readingExp.level);
+  const usernameEffect = getLevelUsernameEffect(readingExp.level);
   const LevelBadgeIcon = levelBadgeTier.icon;
 
   const handleAvatarFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -163,7 +164,13 @@ export function ProfilePageClient({
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">
+              <h1
+                className={cn(
+                  "text-2xl font-semibold tracking-wide",
+                  usernameEffect.className,
+                )}
+                title={`${usernameEffect.name} username effect`}
+              >
                 {displayName}
               </h1>
               <p className="text-sm text-muted-foreground">
