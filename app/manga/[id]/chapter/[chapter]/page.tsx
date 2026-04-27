@@ -25,6 +25,7 @@ import {
   getReadChapterNames,
   markChapterAsRead,
 } from "@/lib/actions/read-chapter.actions";
+import { trackMangaChapterView } from "@/lib/actions/manga-view.actions";
 import { toast } from "sonner";
 import {
   ComicDetailItem,
@@ -87,18 +88,40 @@ export default function ChapterReaderPage({
           }
 
           if (currentChapterData) {
-            const marked = await markChapterAsRead({
-              comicId: detailData.item._id,
-              comicSlug: detailData.item.slug,
-              comicName: detailData.item.name,
-              thumbUrl: detailData.item.thumb_url,
-              status: detailData.item.status,
-              comicUpdatedAt: detailData.item.updatedAt,
-              categories: detailData.item.category || [],
-              chapterName: chapter,
-            });
+            const [viewResult, markResult] = await Promise.allSettled([
+              trackMangaChapterView({
+                comicId: detailData.item._id,
+                comicSlug: detailData.item.slug,
+                comicName: detailData.item.name,
+                thumbUrl: detailData.item.thumb_url,
+                status: detailData.item.status,
+                comicUpdatedAt: detailData.item.updatedAt,
+                categories: detailData.item.category || [],
+                chapterName: chapter,
+              }),
+              markChapterAsRead({
+                comicId: detailData.item._id,
+                comicSlug: detailData.item.slug,
+                comicName: detailData.item.name,
+                thumbUrl: detailData.item.thumb_url,
+                status: detailData.item.status,
+                comicUpdatedAt: detailData.item.updatedAt,
+                categories: detailData.item.category || [],
+                chapterName: chapter,
+              }),
+            ]);
 
-            if (marked.success) {
+            if (
+              viewResult.status === "rejected" ||
+              (viewResult.status === "fulfilled" && !viewResult.value.success)
+            ) {
+              console.error("Failed to track manga view:", detailData.item.slug);
+            }
+
+            if (
+              markResult.status === "fulfilled" &&
+              markResult.value.success
+            ) {
               setReadChapterNames((prev) =>
                 prev.includes(chapter) ? prev : [chapter, ...prev],
               );

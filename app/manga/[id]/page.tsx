@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { MangaCardApi } from "@/components/manga-card-api";
 import { MangaCommentsSection } from "@/components/manga-comments-section";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +13,7 @@ import {
   Heart,
   Share2,
   Clock,
+  Eye,
   User,
   ChevronDown,
   ChevronUp,
@@ -31,11 +31,12 @@ import { getReadChapterNames } from "@/lib/actions/read-chapter.actions";
 import { toast } from "sonner";
 import {
   ComicDetailItem,
-  OTruyenComic,
   getImageUrl,
   formatStatus,
   formatUpdatedAt,
 } from "@/types/otruyen-types";
+import { getMangaViewStats } from "@/lib/actions/manga-view.actions";
+import { formatViewCount } from "@/lib/view-utils";
 
 export default function MangaDetailPage({
   params,
@@ -51,17 +52,19 @@ export default function MangaDetailPage({
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
   const [readChapterNames, setReadChapterNames] = useState<string[]>([]);
+  const [totalViews, setTotalViews] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [detailData, bookmarked, readChapters] = await Promise.all([
-          getComicDetail(id),
-
-          isMangaBookmarked(id),
-          getReadChapterNames(id),
-        ]);
+        const [detailData, bookmarked, readChapters, viewStats] =
+          await Promise.all([
+            getComicDetail(id),
+            isMangaBookmarked(id),
+            getReadChapterNames(id),
+            getMangaViewStats(id),
+          ]);
 
         if (detailData) {
           setComic(detailData.item);
@@ -69,6 +72,7 @@ export default function MangaDetailPage({
 
         setIsBookmarked(bookmarked);
         setReadChapterNames(readChapters);
+        setTotalViews(viewStats.totalViews);
       } catch (error) {
         console.error("Failed to fetch comic:", error);
       } finally {
@@ -204,6 +208,10 @@ export default function MangaDetailPage({
                 <span className="flex items-center gap-2 text-muted-foreground">
                   <BookOpen className="h-5 w-5" />
                   <span>{chapters.length} chapters</span>
+                </span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Eye className="h-5 w-5" />
+                  <span>{formatViewCount(totalViews)} views</span>
                 </span>
                 <span className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="h-5 w-5" />

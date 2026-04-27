@@ -60,6 +60,8 @@ export interface OTruyenComic {
   category: Category[];
   updatedAt: string;
   chaptersLatest?: ChapterLatest[];
+  totalViews?: number;
+  periodViews?: number;
 }
 
 export interface Category {
