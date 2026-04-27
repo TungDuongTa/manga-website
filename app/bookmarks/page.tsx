@@ -51,7 +51,7 @@ export default async function BookmarksPage({ searchParams }: BookmarksPageProps
 
   if (!session?.user) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <main className="mx-auto max-w-4xl px-4 py-16">
           <div className="text-center py-16 bg-card border border-border rounded-xl">
             <Bookmark className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -120,7 +120,7 @@ export default async function BookmarksPage({ searchParams }: BookmarksPageProps
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -374,3 +374,4 @@ export default async function BookmarksPage({ searchParams }: BookmarksPageProps
     </div>
   );
 }
+

@@ -147,13 +147,8 @@ export function RankingSidebarApi({ limit = 10 }: RankingSidebarApiProps) {
                       ? comic.totalViews || 0
                       : comic.periodViews || 0,
                   )}{" "}
-                  {activeTab === "allTime" ? "all-time" : activeTab} views
+                  views
                 </p>
-                {activeTab !== "allTime" && (
-                  <p className="text-[11px] text-muted-foreground/80">
-                    {formatViewCount(comic.totalViews || 0)} total views
-                  </p>
-                )}
 
                 {comic.category.length > 0 && (
                   <Badge

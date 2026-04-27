@@ -178,7 +178,7 @@ export default function BrowsePage() {
   const visiblePages = getVisiblePages(currentPage, totalPages);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
@@ -457,3 +457,4 @@ export default function BrowsePage() {
     </div>
   );
 }
+

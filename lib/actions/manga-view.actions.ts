@@ -49,6 +49,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const ONE_WEEK_MS = 7 * ONE_DAY_MS;
 const THIRTY_DAYS_MS = 30 * ONE_DAY_MS;
 const DEFAULT_RANKING_LIMIT = 10;
+const MAX_RANKING_LIMIT = 120;
 
 const toStoredCategories = (categories: Category[] = []) =>
   categories.map((category) => ({
@@ -231,7 +232,7 @@ export const getMangaRankings = async (
   limit: number = DEFAULT_RANKING_LIMIT,
 ): Promise<MangaRankings> => {
   const safeLimit = Number.isFinite(limit)
-    ? Math.max(1, Math.min(50, Math.floor(limit)))
+    ? Math.max(1, Math.min(MAX_RANKING_LIMIT, Math.floor(limit)))
     : DEFAULT_RANKING_LIMIT;
 
   try {

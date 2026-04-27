@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   Search,
   Menu,
@@ -11,10 +12,12 @@ import {
   Clock,
   Home,
   Library,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SearchCommand, SearchTrigger } from "@/components/search-command";
+import { cn } from "@/lib/utils";
 import {
   HeaderAuthButton,
   type HeaderUser,
@@ -25,6 +28,7 @@ type HeaderProps = {
 };
 
 export function Header({ user }: HeaderProps) {
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -52,57 +56,56 @@ export function Header({ user }: HeaderProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
+
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/browse", label: "Browse", icon: Library },
     { href: "/latest", label: "Latest", icon: Clock },
     { href: "/bookmarks", label: "Bookmarks", icon: Bookmark },
+    { href: "/ranking", label: "Ranking", icon: Trophy },
   ];
+
+  const isActiveLink = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   return (
     <>
       <header
-        className={`max-w-screen fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-transform duration-300 ${
+        className={`max-w-screen fixed top-0 left-0 right-0 z-50 border-b border-border/80 bg-background/95 shadow-lg shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-background/80 transition-transform duration-300 ${
           isVisible ? "translate-y-0" : "-translate-y-full"
         }`}
       >
         <div className="mx-auto max-w-7xl px-4">
           <div className="flex h-16 items-center justify-between gap-4">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 shrink-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-2 rounded-xl px-1 py-1 transition-colors hover:bg-secondary/30"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/75 shadow-md shadow-primary/20">
                 <BookOpen className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold tracking-tight text-primary logo-glow hidden sm:block">
+              <span className="hidden text-xl font-bold tracking-tight text-primary logo-glow sm:block">
                 VuaTruyen
               </span>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary rounded-md"
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-
             {/* Search Bar */}
-            <div className="flex-1 max-w-md hidden md:block">
+            <div className="hidden max-w-xl flex-1 px-2 md:block">
               <SearchTrigger onClick={() => setSearchOpen(true)} />
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-card/50 px-2 py-1">
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
+                className="md:hidden hover:bg-secondary/70"
                 onClick={() => setSearchOpen(true)}
               >
                 <Search className="h-5 w-5" />
@@ -115,7 +118,7 @@ export function Header({ user }: HeaderProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="lg:hidden hover:bg-secondary/70"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
                 {isMenuOpen ? (
@@ -127,16 +130,54 @@ export function Header({ user }: HeaderProps) {
             </div>
           </div>
 
+          {/* Desktop Navigation (Second Row) */}
+          <div className="hidden border-t border-border/70 bg-gradient-to-r from-secondary/25 via-secondary/10 to-secondary/25 lg:block">
+            <nav className="flex h-12 items-center justify-center gap-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActiveLink(link.href) ? "page" : undefined}
+                  className={cn(
+                    "group relative flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-all",
+                    isActiveLink(link.href)
+                      ? "border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10"
+                      : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-secondary/70 hover:text-foreground",
+                  )}
+                >
+                  <link.icon
+                    className={cn(
+                      "h-4 w-4 transition-colors",
+                      isActiveLink(link.href)
+                        ? "text-primary"
+                        : "text-muted-foreground group-hover:text-foreground",
+                    )}
+                  />
+                  {link.label}
+                  {isActiveLink(link.href) && (
+                    <span className="absolute -bottom-[7px] left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-primary/70" />
+                  )}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
           {/* Mobile Menu */}
           {isMenuOpen && (
-            <div className="lg:hidden py-4 border-t border-border">
-              <nav className="flex flex-col gap-1">
+            <div className="border-t border-border py-4 lg:hidden">
+              <nav className="flex flex-col gap-1.5">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center gap-3 px-3 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary rounded-md"
+                    aria-current={isActiveLink(link.href) ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border px-3 py-3 text-sm font-medium transition-colors",
+                      isActiveLink(link.href)
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-secondary hover:text-foreground",
+                    )}
                   >
                     <link.icon className="h-5 w-5" />
                     {link.label}
@@ -149,7 +190,7 @@ export function Header({ user }: HeaderProps) {
       </header>
 
       {/* Spacer for fixed header */}
-      <div className="h-16" />
+      <div className="h-16 lg:h-28" />
 
       {/* Search Command Dialog */}
       <SearchCommand open={searchOpen} onOpenChange={setSearchOpen} />

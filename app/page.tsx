@@ -20,7 +20,7 @@ export default async function HomePage() {
   const completedComics = completedData?.items || [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Hero Section */}
         <section className="mb-12">
@@ -115,3 +115,4 @@ export default async function HomePage() {
     </div>
   );
 }
+

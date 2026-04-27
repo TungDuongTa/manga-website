@@ -13,7 +13,7 @@ export default async function ProfilePage() {
 
   if (!session?.user) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         <main className="mx-auto max-w-3xl px-4 py-16">
           <div className="rounded-2xl border border-border bg-card px-6 py-14 text-center shadow-sm">
             <UserRound className="mx-auto mb-4 h-14 w-14 text-muted-foreground" />
@@ -49,3 +49,4 @@ export default async function ProfilePage() {
     </div>
   );
 }
+
