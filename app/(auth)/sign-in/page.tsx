@@ -118,6 +118,12 @@ const SignIn = () => {
             </form>
 
             <div className="mt-6 pt-6 border-t border-border">
+              <p className="text-center text-sm text-muted-foreground mb-3">
+                Don't have an account?{" "}
+                <Link href="/sign-up" className="text-primary hover:underline">
+                  Sign up
+                </Link>
+              </p>
               <p className="text-center text-sm text-muted-foreground mb-4">
                 Or continue with
               </p>
