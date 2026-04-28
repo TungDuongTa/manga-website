@@ -2,6 +2,9 @@
 import { auth } from "../better-auth/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { connectToDatabase } from "@/database/mongoose";
+import { CommentModel } from "@/database/models/comment.model";
 export const signUpWithEmail = async (data: SignUpFormData) => {
   try {
     const response = await auth.api.signUpEmail({
@@ -34,6 +37,18 @@ type UpdateUserProfileInput = {
 
 export const updateUserProfile = async (data: UpdateUserProfileInput) => {
   try {
+    const requestHeaders = await headers();
+    const session = await auth.api.getSession({
+      headers: requestHeaders,
+    });
+    const userId = session?.user?.id;
+    if (!userId) {
+      return {
+        success: false,
+        message: "Please sign in to update your profile.",
+      };
+    }
+
     const name = data.displayName.trim();
     if (name.length < 2 || name.length > 40) {
       return {
@@ -45,12 +60,33 @@ export const updateUserProfile = async (data: UpdateUserProfileInput) => {
     const normalizedAvatar = data.avatar?.trim() || null;
 
     await auth.api.updateUser({
-      headers: await headers(),
+      headers: requestHeaders,
       body: {
         name,
         image: normalizedAvatar,
       },
     });
+
+    // Keep historical comments in sync with latest profile data.
+    await connectToDatabase();
+    await CommentModel.updateMany(
+      {
+        userId,
+        $or: [
+          { userName: { $ne: name } },
+          { userImage: { $ne: normalizedAvatar || "" } },
+        ],
+      },
+      {
+        $set: {
+          userName: name,
+          userImage: normalizedAvatar || "",
+        },
+      },
+    );
+
+    revalidatePath("/");
+    revalidatePath("/profile");
 
     return {
       success: true,
