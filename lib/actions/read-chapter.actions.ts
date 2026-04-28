@@ -1,13 +1,12 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/better-auth/auth";
 import { connectToDatabase } from "@/database/mongoose";
 import { ReadChapterModel } from "@/database/models/read-chapter.model";
 import { BookmarkModel } from "@/database/models/bookmark.model";
 import { getComicDetail } from "@/lib/actions/otruyen-actions";
 import { compareChapterNames } from "@/lib/chapter-utils";
+import { getCurrentUserId } from "@/lib/server-session";
 import type { Category, OTruyenComic } from "@/types/otruyen-types";
 
 type MarkChapterAsReadInput = {
@@ -44,14 +43,6 @@ export type ReadingExpStats = {
 const MAX_LEVEL = 100;
 const EXP_PER_CHAPTER = 1;
 const EXP_PER_LEVEL = 100;
-
-const getCurrentUserId = async (): Promise<string | null> => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  return session?.user?.id ?? null;
-};
 
 const calculateReadingExpStats = (chaptersRead: number): ReadingExpStats => {
   const totalExp = Math.max(0, chaptersRead) * EXP_PER_CHAPTER;

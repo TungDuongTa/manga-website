@@ -1,10 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { BookmarkModel } from "@/database/models/bookmark.model";
 import { connectToDatabase } from "@/database/mongoose";
-import { auth } from "@/lib/better-auth/auth";
+import { getCurrentUserId } from "@/lib/server-session";
 import type { Category, OTruyenComic } from "@/types/otruyen-types";
 
 type ToggleBookmarkInput = {
@@ -27,14 +26,6 @@ type BookmarkActionResult = {
 
 export type BookmarkedComic = OTruyenComic & {
   bookmarkedAt: string;
-};
-
-const getCurrentUserId = async (): Promise<string | null> => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  return session?.user?.id ?? null;
 };
 
 const toBookmarkedComic = (doc: any): BookmarkedComic => ({

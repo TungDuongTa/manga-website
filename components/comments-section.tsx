@@ -3,41 +3,13 @@ import { MessageCircle, ThumbsUp } from "lucide-react";
 import type { HomeRecentCommentItem } from "@/lib/actions/comment.actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { formatRelativeTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
 import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
 
 interface CommentsSectionProps {
   comments: HomeRecentCommentItem[];
 }
-
-const getRelativeTime = (input: string) => {
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "just now";
-
-  const diffMs = date.getTime() - Date.now();
-  const diffAbsSeconds = Math.round(Math.abs(diffMs) / 1000);
-
-  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ["year", 60 * 60 * 24 * 365],
-    ["month", 60 * 60 * 24 * 30],
-    ["week", 60 * 60 * 24 * 7],
-    ["day", 60 * 60 * 24],
-    ["hour", 60 * 60],
-    ["minute", 60],
-    ["second", 1],
-  ];
-
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  for (const [unit, secondsPerUnit] of units) {
-    if (diffAbsSeconds >= secondsPerUnit || unit === "second") {
-      const value = Math.round(diffMs / 1000 / secondsPerUnit);
-      return formatter.format(value, unit);
-    }
-  }
-
-  return "just now";
-};
 
 const getUserInitial = (name: string) => {
   const trimmed = String(name || "").trim();
@@ -110,7 +82,7 @@ export function CommentsSection({ comments }: CommentsSectionProps) {
                         </Badge>
                       </div>
                       <span className="shrink-0 text-xs text-muted-foreground">
-                        {getRelativeTime(comment.createdAt)}
+                        {formatRelativeTime(comment.createdAt)}
                       </span>
                     </div>
 

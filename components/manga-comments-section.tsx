@@ -21,6 +21,7 @@ import {
   type CommentFeedItem,
   type CommentViewer,
 } from "@/lib/actions/comment.actions";
+import { formatRelativeTime } from "@/lib/date-time";
 import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,35 +33,6 @@ type MangaCommentsSectionProps = {
   comicSlug: string;
   chapterName?: string;
   className?: string;
-};
-
-const getRelativeTime = (input: string) => {
-  const date = new Date(input);
-  if (Number.isNaN(date.getTime())) return "just now";
-
-  const diffMs = date.getTime() - Date.now();
-  const diffAbsSeconds = Math.round(Math.abs(diffMs) / 1000);
-
-  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ["year", 60 * 60 * 24 * 365],
-    ["month", 60 * 60 * 24 * 30],
-    ["week", 60 * 60 * 24 * 7],
-    ["day", 60 * 60 * 24],
-    ["hour", 60 * 60],
-    ["minute", 60],
-    ["second", 1],
-  ];
-
-  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-
-  for (const [unit, secondsPerUnit] of units) {
-    if (diffAbsSeconds >= secondsPerUnit || unit === "second") {
-      const value = Math.round(diffMs / 1000 / secondsPerUnit);
-      return formatter.format(value, unit);
-    }
-  }
-
-  return "just now";
 };
 
 const getViewerInitial = (viewer: CommentViewer) => {
@@ -541,7 +513,7 @@ export function MangaCommentsSection({
               </Badge>
             )}
             <span className="text-xs text-muted-foreground">
-              {getRelativeTime(comment.createdAt)}
+              {formatRelativeTime(comment.createdAt)}
             </span>
           </div>
 

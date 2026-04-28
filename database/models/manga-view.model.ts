@@ -28,5 +28,7 @@ const mangaViewSchema = new Schema(
 
 mangaViewSchema.index({ comicSlug: 1, viewedAt: -1 });
 mangaViewSchema.index({ comicSlug: 1, chapterName: 1, viewedAt: -1 });
+mangaViewSchema.index({ viewedAt: -1, comicSlug: 1 });
+mangaViewSchema.index({ comicSlug: 1, viewedAt: -1, updatedAt: -1 });
 
 export const MangaViewModel = models.MangaView || model("MangaView", mangaViewSchema);
