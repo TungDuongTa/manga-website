@@ -2,7 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { UserRound } from "lucide-react";
 import { auth } from "@/lib/better-auth/auth";
-import { getCurrentUserReadingExpStats } from "@/lib/actions/read-chapter.actions";
+import { getCurrentUserReadingExpStats } from "@/lib/actions/reading-progress.actions";
 import { Button } from "@/components/ui/button";
 import { ProfilePageClient } from "@/components/profile/profile-page-client";
 

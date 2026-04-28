@@ -18,7 +18,7 @@ import {
   getCurrentUserBookmarks,
   removeMangaBookmark,
 } from "@/lib/actions/bookmark.actions";
-import { getCurrentUserReadingHistory } from "@/lib/actions/read-chapter.actions";
+import { getCurrentUserReadingHistory } from "@/lib/actions/reading-progress.actions";
 
 const ITEMS_PER_PAGE = 24;
 

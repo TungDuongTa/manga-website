@@ -18,17 +18,24 @@ const mangaViewSchema = new Schema(
     status: { type: String, default: "" },
     comicUpdatedAt: { type: String, default: "" },
     categories: { type: [mangaViewCategorySchema], default: [] },
-    chapterName: { type: String, required: true },
-    viewedAt: { type: Date, default: Date.now, index: true },
+    dayBucket: { type: Date, required: true, index: true },
+    views: { type: Number, default: 0 },
+    lastViewedAt: { type: Date, default: null },
+    lastViewedChapterName: { type: String, default: "" },
   },
   {
     timestamps: true,
   },
 );
 
-mangaViewSchema.index({ comicSlug: 1, viewedAt: -1 });
-mangaViewSchema.index({ comicSlug: 1, chapterName: 1, viewedAt: -1 });
-mangaViewSchema.index({ viewedAt: -1, comicSlug: 1 });
-mangaViewSchema.index({ comicSlug: 1, viewedAt: -1, updatedAt: -1 });
+mangaViewSchema.index(
+  { comicSlug: 1, dayBucket: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { dayBucket: { $type: "date" } },
+  },
+);
+mangaViewSchema.index({ dayBucket: -1, comicSlug: 1 });
+mangaViewSchema.index({ comicSlug: 1, dayBucket: -1, lastViewedAt: -1 });
 
 export const MangaViewModel = models.MangaView || model("MangaView", mangaViewSchema);

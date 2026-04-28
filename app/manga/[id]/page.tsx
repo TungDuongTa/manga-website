@@ -1,103 +1,34 @@
-"use client";
-
-import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { MangaCommentsSection } from "@/components/manga-comments-section";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  BookOpen,
-  Heart,
-  Share2,
-  Clock,
-  Eye,
-  User,
-  ChevronDown,
-  ChevronUp,
-  ArrowUpDown,
-  Play,
-  Loader2,
-  CheckCircle2,
-} from "lucide-react";
-import { getComicDetail } from "@/lib/actions/otruyen-actions";
-import {
-  isMangaBookmarked,
-  toggleMangaBookmark,
-} from "@/lib/actions/bookmark.actions";
-import { getReadChapterNames } from "@/lib/actions/read-chapter.actions";
-import { toast } from "sonner";
-import {
-  ComicDetailItem,
-  getImageUrl,
-  formatStatus,
-  formatUpdatedAt,
-} from "@/types/otruyen-types";
+import { MangaDetailPageClient } from "@/components/manga-detail-page-client";
+import { isMangaBookmarked } from "@/lib/actions/bookmark.actions";
 import { getMangaViewStats } from "@/lib/actions/manga-view.actions";
-import { formatViewCount } from "@/lib/view-utils";
+import { getComicDetail } from "@/lib/actions/otruyen-actions";
+import { getReadingProgressChapterNames } from "@/lib/actions/reading-progress.actions";
 
-export default function MangaDetailPage({
+export default async function MangaDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const router = useRouter();
-  const { id } = use(params);
-  const [comic, setComic] = useState<ComicDetailItem | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [chaptersOrder, setChaptersOrder] = useState<"desc" | "asc">("desc");
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
-  const [readChapterNames, setReadChapterNames] = useState<string[]>([]);
-  const [totalViews, setTotalViews] = useState(0);
+  const { id } = await params;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [detailData, bookmarked, readChapters, viewStats] =
-          await Promise.all([
-            getComicDetail(id),
-            isMangaBookmarked(id),
-            getReadChapterNames(id),
-            getMangaViewStats(id),
-          ]);
+  const [detailResult, bookmarkResult, readResult, viewResult] =
+    await Promise.allSettled([
+      getComicDetail(id),
+      isMangaBookmarked(id),
+      getReadingProgressChapterNames(id),
+      getMangaViewStats(id),
+    ]);
 
-        if (detailData) {
-          setComic(detailData.item);
-        }
+  const detailData =
+    detailResult.status === "fulfilled" ? detailResult.value : null;
 
-        setIsBookmarked(bookmarked);
-        setReadChapterNames(readChapters);
-        setTotalViews(viewStats.totalViews);
-      } catch (error) {
-        console.error("Failed to fetch comic:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [id]);
-
-  if (isLoading) {
+  if (!detailData?.item) {
     return (
       <div className="min-h-screen">
-        <main className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
-      </div>
-    );
-  }
-
-  if (!comic) {
-    return (
-      <div className="min-h-screen">
-        <main className="flex flex-col items-center justify-center min-h-[60vh]">
-          <h1 className="text-2xl font-bold text-foreground mb-4">
+        <main className="flex min-h-[60vh] flex-col items-center justify-center">
+          <h1 className="mb-4 text-2xl font-bold text-foreground">
             Manga Not Found
           </h1>
           <Link href="/">
@@ -108,308 +39,20 @@ export default function MangaDetailPage({
     );
   }
 
-  const chapters = comic.chapters?.[0]?.server_data || [];
-  const sortedChapters = [...chapters].sort((a, b) => {
-    const aNum = parseFloat(a.chapter_name) || 0;
-    const bNum = parseFloat(b.chapter_name) || 0;
-    return chaptersOrder === "desc" ? bNum - aNum : aNum - bNum;
-  });
-
-  const latestChapter =
-    chapters.length > 0 ? chapters[chapters.length - 1] : null;
-  const firstChapter = chapters.length > 0 ? chapters[0] : null;
-  const readChapterSet = new Set(readChapterNames);
-
-  const handleBookmarkToggle = async () => {
-    if (!comic || isBookmarkLoading) return;
-
-    setIsBookmarkLoading(true);
-    try {
-      const result = await toggleMangaBookmark({
-        comicId: comic._id,
-        slug: comic.slug,
-        name: comic.name,
-        thumbUrl: comic.thumb_url,
-        status: comic.status,
-        comicUpdatedAt: comic.updatedAt,
-        categories: comic.category || [],
-        latestChapterName: latestChapter?.chapter_name,
-      });
-
-      if (!result.success) {
-        toast.error(result.message);
-        if (result.requiresSignIn) {
-          router.push("/sign-in");
-        }
-        return;
-      }
-
-      setIsBookmarked(result.bookmarked);
-      toast.success(result.message);
-    } catch (error) {
-      console.error("Failed to bookmark manga:", error);
-      toast.error("Could not update bookmark. Please try again.");
-    } finally {
-      setIsBookmarkLoading(false);
-    }
-  };
+  const initialBookmarked =
+    bookmarkResult.status === "fulfilled" ? bookmarkResult.value : false;
+  const initialReadChapterNames =
+    readResult.status === "fulfilled" ? readResult.value : [];
+  const initialTotalViews =
+    viewResult.status === "fulfilled" ? viewResult.value.totalViews : 0;
 
   return (
-    <div className="min-h-screen">
-      <main>
-        {/* Hero Banner */}
-        <div className="relative h-64 md:h-80 overflow-hidden">
-          <Image
-            src={getImageUrl(comic.thumb_url)}
-            alt={comic.name}
-            fill
-            className="object-cover blur-sm scale-110"
-            unoptimized
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
-        </div>
-
-        <div className="mx-auto max-w-7xl px-4 -mt-40 relative z-10">
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Cover Image */}
-            <div className="shrink-0">
-              <div className="relative w-48 md:w-56 aspect-[3/4] rounded-xl overflow-hidden shadow-2xl shadow-primary/20 mx-auto md:mx-0 bg-muted">
-                <Image
-                  src={getImageUrl(comic.thumb_url)}
-                  alt={comic.name}
-                  fill
-                  className="object-cover"
-                  priority
-                  unoptimized
-                />
-              </div>
-            </div>
-
-            {/* Manga Info */}
-            <div className="flex-1 pt-4 md:pt-8">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <Badge className="bg-primary text-primary-foreground">
-                  {formatStatus(comic.status)}
-                </Badge>
-              </div>
-
-              <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2 text-balance">
-                {comic.name}
-              </h1>
-
-              {comic.origin_name.length > 0 && (
-                <p className="text-muted-foreground mb-4">
-                  {comic.origin_name.join(", ")}
-                </p>
-              )}
-
-              {/* Stats */}
-              <div className="flex flex-wrap items-center gap-4 mb-6">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <BookOpen className="h-5 w-5" />
-                  <span>{chapters.length} chapters</span>
-                </span>
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Eye className="h-5 w-5" />
-                  <span>{formatViewCount(totalViews)} views</span>
-                </span>
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-5 w-5" />
-                  <span>{formatUpdatedAt(comic.updatedAt)}</span>
-                </span>
-              </div>
-
-              {/* Author */}
-              {comic.author.length > 0 && (
-                <div className="flex flex-wrap gap-4 mb-6">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    <span className="text-sm">
-                      Author:{" "}
-                      <span className="text-foreground font-medium">
-                        {comic.author.join(", ")}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Genres */}
-              <div className="flex flex-wrap gap-2 mb-6">
-                {comic.category.map((cat) => (
-                  <Link key={cat.id} href={`/browse?genres=${cat.slug}`}>
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-secondary/80"
-                    >
-                      {cat.name}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3">
-                {firstChapter && (
-                  <Link
-                    href={`/manga/${comic.slug}/chapter/${firstChapter.chapter_name}`}
-                  >
-                    <Button size="lg" className="gap-2">
-                      <Play className="h-4 w-4" />
-                      Start Reading
-                    </Button>
-                  </Link>
-                )}
-                {latestChapter && (
-                  <Link
-                    href={`/manga/${comic.slug}/chapter/${latestChapter.chapter_name}`}
-                  >
-                    <Button size="lg" variant="outline" className="gap-2">
-                      <BookOpen className="h-4 w-4" />
-                      Latest Chapter
-                    </Button>
-                  </Link>
-                )}
-                <Button
-                  size="lg"
-                  variant={isBookmarked ? "default" : "outline"}
-                  className="gap-2"
-                  onClick={handleBookmarkToggle}
-                  disabled={isBookmarkLoading}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`}
-                  />
-                  {isBookmarkLoading
-                    ? "Saving..."
-                    : isBookmarked
-                      ? "Bookmarked"
-                      : "Bookmark"}
-                </Button>
-                <Button size="lg" variant="ghost" className="gap-2">
-                  <Share2 className="h-4 w-4" />
-                  Share
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="mt-8 bg-card border border-border rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-foreground mb-3">
-              Synopsis
-            </h2>
-            <div
-              className={`text-muted-foreground leading-relaxed ${!isDescriptionExpanded ? "line-clamp-3" : ""}`}
-              dangerouslySetInnerHTML={{
-                __html: comic.content || "No description available.",
-              }}
-            />
-            {comic.content && comic.content.length > 200 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-primary"
-                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-              >
-                {isDescriptionExpanded ? (
-                  <>
-                    <ChevronUp className="h-4 w-4 mr-1" />
-                    Show Less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="h-4 w-4 mr-1" />
-                    Read More
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-
-          {/* Tabs: Chapters */}
-          <div className="mt-8">
-            <Tabs defaultValue="chapters">
-              <TabsList className="w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap">
-                <TabsTrigger value="chapters" className="gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  Chapters ({chapters.length})
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="chapters" className="mt-6">
-                {/* Chapter List Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Chapter List
-                  </h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() =>
-                      setChaptersOrder(
-                        chaptersOrder === "desc" ? "asc" : "desc",
-                      )
-                    }
-                  >
-                    <ArrowUpDown className="h-4 w-4" />
-                    {chaptersOrder === "desc" ? "Newest First" : "Oldest First"}
-                  </Button>
-                </div>
-
-                {/* Chapter List */}
-                <div className="bg-card border border-border rounded-xl divide-y divide-border max-h-[500px] overflow-y-auto">
-                  {sortedChapters.map((chapter, index) => {
-                    const isRead = readChapterSet.has(chapter.chapter_name);
-
-                    return (
-                      <Link
-                        key={`${chapter.chapter_name}-${index}`}
-                        href={`/manga/${comic.slug}/chapter/${chapter.chapter_name}`}
-                        className={`flex items-center justify-between p-4 transition-colors first:rounded-t-xl last:rounded-b-xl ${
-                          isRead
-                            ? "bg-primary/5 hover:bg-primary/10"
-                            : "hover:bg-secondary"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <span
-                            className={`font-medium ${
-                              isRead ? "text-primary" : "text-foreground"
-                            }`}
-                          >
-                            Chapter {chapter.chapter_name}
-                          </span>
-                          {chapter.chapter_title && (
-                            <span className="text-muted-foreground text-sm hidden sm:inline">
-                              {chapter.chapter_title}
-                            </span>
-                          )}
-                        </div>
-
-                        {isRead && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Read
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          <section className="mt-8">
-            <MangaCommentsSection
-              comicSlug={comic.slug || id}
-              comicName={comic.name || ""}
-            />
-          </section>
-        </div>
-      </main>
-    </div>
+    <MangaDetailPageClient
+      id={id}
+      comic={detailData.item}
+      initialBookmarked={initialBookmarked}
+      initialReadChapterNames={initialReadChapterNames}
+      initialTotalViews={initialTotalViews}
+    />
   );
 }

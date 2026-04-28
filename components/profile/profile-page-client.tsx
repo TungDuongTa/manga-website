@@ -19,6 +19,11 @@ import {
 } from "lucide-react";
 import { signOut, updateUserProfile } from "@/lib/actions/auth.actions";
 import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
+import {
+  EXP_PER_CHAPTER,
+  EXP_PER_LEVEL,
+  type ReadingExpStats,
+} from "@/lib/user-level";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -27,16 +32,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-
-type ReadingExpStats = {
-  chaptersRead: number;
-  totalExp: number;
-  level: number;
-  currentLevelExp: number;
-  expToNextLevel: number;
-  progressPercent: number;
-  maxLevel: number;
-};
 
 type ProfilePageClientProps = {
   initialProfile: {
@@ -318,7 +313,7 @@ export function ProfilePageClient({
             <p className="text-sm text-muted-foreground">
               {isMaxLevel
                 ? "Maximum level reached. Keep reading to grow your total EXP."
-                : `${readingExp.currentLevelExp}/100 EXP in this level. ${readingExp.expToNextLevel} EXP until Level ${nextLevel}.`}
+                : `${readingExp.currentLevelExp}/${EXP_PER_LEVEL} EXP in this level. ${readingExp.expToNextLevel} EXP until Level ${nextLevel}.`}
             </p>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -337,8 +332,8 @@ export function ProfilePageClient({
             </div>
 
             <p className="text-xs text-muted-foreground">
-              EXP is earned from manga reading activity. Current rate: 1 EXP per
-              chapter.
+              EXP is earned from manga reading activity. Current rate:{" "}
+              {EXP_PER_CHAPTER} EXP per chapter.
             </p>
 
             <Button

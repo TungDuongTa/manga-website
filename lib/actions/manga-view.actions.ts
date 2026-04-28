@@ -47,10 +47,18 @@ type PeriodRankingRow = {
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const ONE_WEEK_MS = 7 * ONE_DAY_MS;
-const THIRTY_DAYS_MS = 30 * ONE_DAY_MS;
+const WEEK_WINDOW_DAYS = 7;
+const MONTH_WINDOW_DAYS = 30;
 const DEFAULT_RANKING_LIMIT = 10;
 const MAX_RANKING_LIMIT = 120;
+
+const getUtcDayStart = (date: Date): Date =>
+  new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+
+const addUtcDays = (date: Date, days: number): Date =>
+  new Date(date.getTime() + days * ONE_DAY_MS);
 
 const toStoredCategories = (categories: Category[] = []) =>
   categories.map((category) => ({
@@ -80,7 +88,10 @@ const toRankingItem = (
       doc.comicUpdatedAt ||
       new Date(doc.updatedAt || doc.createdAt || Date.now()).toISOString(),
     chaptersLatest: [],
-    latestChapterName: latestChapterMap?.get(comicSlug) || null,
+    latestChapterName:
+      latestChapterMap?.get(comicSlug) ||
+      String(doc.lastViewedChapterName || "").trim() ||
+      null,
     totalViews,
     periodViews: Number(periodViews || 0),
   };
@@ -101,21 +112,25 @@ const getWindowRankings = async (
   weekly: PeriodRankingRow[];
   monthly: PeriodRankingRow[];
 }> => {
-  const now = Date.now();
-  const dailySince = new Date(now - ONE_DAY_MS);
-  const weeklySince = new Date(now - ONE_WEEK_MS);
-  const monthlySince = new Date(now - THIRTY_DAYS_MS);
+  const todayStart = getUtcDayStart(new Date());
+  const weeklyStart = addUtcDays(todayStart, -(WEEK_WINDOW_DAYS - 1));
+  const monthlyStart = addUtcDays(todayStart, -(MONTH_WINDOW_DAYS - 1));
 
   const [result] = await MangaViewModel.aggregate([
     {
       $match: {
-        viewedAt: { $gte: monthlySince },
+        $or: [
+          { dayBucket: { $gte: monthlyStart } },
+          { viewedAt: { $gte: monthlyStart } },
+        ],
       },
     },
     {
       $project: {
         comicSlug: 1,
-        viewedAt: 1,
+        metricDate: { $ifNull: ["$dayBucket", "$viewedAt"] },
+        metricViews: { $ifNull: ["$views", 1] },
+        metricLastViewedAt: { $ifNull: ["$lastViewedAt", "$viewedAt"] },
       },
     },
     {
@@ -123,16 +138,16 @@ const getWindowRankings = async (
         _id: "$comicSlug",
         dailyViews: {
           $sum: {
-            $cond: [{ $gte: ["$viewedAt", dailySince] }, 1, 0],
+            $cond: [{ $gte: ["$metricDate", todayStart] }, "$metricViews", 0],
           },
         },
         weeklyViews: {
           $sum: {
-            $cond: [{ $gte: ["$viewedAt", weeklySince] }, 1, 0],
+            $cond: [{ $gte: ["$metricDate", weeklyStart] }, "$metricViews", 0],
           },
         },
-        monthlyViews: { $sum: 1 },
-        lastViewedAt: { $max: "$viewedAt" },
+        monthlyViews: { $sum: "$metricViews" },
+        lastViewedAt: { $max: "$metricLastViewedAt" },
       },
     },
     {
@@ -179,6 +194,16 @@ const buildPeriodRanking = (
     })
     .filter((item): item is MangaRankingItem => Boolean(item));
 
+const toLatestChapterMap = (rows: any[] = []): Map<string, string> =>
+  new Map<string, string>(
+    rows
+      .map((row: any) => [
+        String(row?.comicSlug || "").trim(),
+        String(row?.lastViewedChapterName || "").trim(),
+      ] as const)
+      .filter(([comicSlug, chapterName]) => Boolean(comicSlug && chapterName)),
+  );
+
 export const trackMangaChapterView = async (
   input: TrackMangaChapterViewInput,
 ): Promise<TrackMangaChapterViewResult> => {
@@ -193,6 +218,7 @@ export const trackMangaChapterView = async (
     await connectToDatabase();
 
     const now = new Date();
+    const dayBucket = getUtcDayStart(now);
     const categories = toStoredCategories(input.categories || []);
     const metadata = {
       comicId: input.comicId || "",
@@ -205,15 +231,25 @@ export const trackMangaChapterView = async (
     };
 
     await Promise.all([
-      MangaViewModel.create({
-        ...metadata,
-        chapterName,
-        viewedAt: now,
-      }),
+      MangaViewModel.updateOne(
+        { comicSlug, dayBucket },
+        {
+          $set: {
+            ...metadata,
+            lastViewedChapterName: chapterName,
+          },
+          $inc: { views: 1 },
+          $max: { lastViewedAt: now },
+        },
+        { upsert: true },
+      ),
       MangaViewStatModel.updateOne(
         { comicSlug },
         {
-          $set: metadata,
+          $set: {
+            ...metadata,
+            lastViewedChapterName: chapterName,
+          },
           $inc: { totalViews: 1 },
           $max: { lastViewedAt: now },
         },
@@ -292,12 +328,6 @@ export const getMangaRankings = async (
         [...dailyRows, ...weeklyRows, ...monthlyRows].map((row) => row._id),
       ),
     );
-    const allTimeSlugs = allTimeRows.map((row: any) =>
-      String(row.comicSlug || "").trim(),
-    );
-    const rankingSlugs = Array.from(
-      new Set([...periodSlugs, ...allTimeSlugs].filter(Boolean)),
-    );
 
     const statDocs =
       periodSlugs.length > 0
@@ -306,30 +336,7 @@ export const getMangaRankings = async (
     const statMap = new Map<string, any>(
       statDocs.map((doc: any) => [String(doc.comicSlug), doc]),
     );
-    const latestChapterRows =
-      rankingSlugs.length > 0
-        ? await MangaViewModel.aggregate([
-            {
-              $match: {
-                comicSlug: { $in: rankingSlugs },
-                chapterName: { $nin: ["", null] },
-              },
-            },
-            { $sort: { viewedAt: -1 } },
-            {
-              $group: {
-                _id: "$comicSlug",
-                latestChapterName: { $first: "$chapterName" },
-              },
-            },
-          ])
-        : [];
-    const latestChapterMap = new Map<string, string>(
-      latestChapterRows.map((row: any) => [
-        String(row._id || ""),
-        String(row.latestChapterName || ""),
-      ]),
-    );
+    const latestChapterMap = toLatestChapterMap([...statDocs, ...allTimeRows]);
 
     return {
       daily: buildPeriodRanking(dailyRows, statMap, latestChapterMap),
