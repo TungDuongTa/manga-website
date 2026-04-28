@@ -86,7 +86,7 @@ export function Header({ user }: HeaderProps) {
               href="/"
               className="flex shrink-0 items-center rounded-xl px-2 py-1 transition-colors hover:bg-secondary/30"
             >
-              <span className=" text-2xl md:text-3xl font-bold tracking-tight brand-pink-mask ">
+              <span className=" text-2xl md:text-4xl font-bold tracking-tight brand-pink-mask ">
                 VuaTruyen
               </span>
             </Link>
@@ -107,7 +107,9 @@ export function Header({ user }: HeaderProps) {
                 <Search className="h-5 w-5" />
               </Button>
 
-              <ThemeToggle />
+              <div className="hidden lg:block">
+                <ThemeToggle />
+              </div>
 
               <HeaderAuthButton user={user} />
 
@@ -161,6 +163,11 @@ export function Header({ user }: HeaderProps) {
           {/* Mobile Menu */}
           {isMenuOpen && (
             <div className="border-t border-border py-4 lg:hidden">
+              <div className="mt-3 border-t border-border/70 pt-3">
+                <div className="flex items-center justify-between rounded-lg px-3 py-2">
+                  <ThemeToggle />
+                </div>
+              </div>
               <nav className="flex flex-col gap-1.5">
                 {navLinks.map((link) => (
                   <Link
