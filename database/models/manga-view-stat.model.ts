@@ -20,6 +20,7 @@ const mangaViewStatSchema = new Schema(
     categories: { type: [mangaViewStatCategorySchema], default: [] },
     totalViews: { type: Number, default: 0 },
     lastViewedAt: { type: Date, default: null },
+    lastViewedChapterName: { type: String, default: "" },
   },
   {
     timestamps: true,

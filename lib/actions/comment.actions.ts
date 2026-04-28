@@ -5,7 +5,7 @@ import { Types } from "mongoose";
 import { connectToDatabase } from "@/database/mongoose";
 import { CommentLikeModel } from "@/database/models/comment-like.model";
 import { CommentModel } from "@/database/models/comment.model";
-import { ReadChapterModel } from "@/database/models/read-chapter.model";
+import { getUserLevelMap } from "@/lib/server/user-level";
 import { getSessionUser } from "@/lib/server-session";
 
 export type CommentViewer = {
@@ -69,8 +69,6 @@ type ToggleCommentLikeResult = {
 };
 
 const COMMENT_MAX_LENGTH = 1000;
-const MAX_LEVEL = 100;
-const EXP_PER_LEVEL = 100;
 const DEFAULT_RECENT_HOME_COMMENT_LIMIT = 10;
 const MAX_RECENT_HOME_COMMENT_LIMIT = 30;
 const TOP_LEVEL_COMMENT_QUERY = {
@@ -87,42 +85,6 @@ const isDuplicateKeyError = (error: unknown) => {
   if (!error || typeof error !== "object") return false;
   const maybeCode = (error as { code?: unknown }).code;
   return maybeCode === 11000;
-};
-
-const toLevel = (chaptersRead: number) => {
-  const safeCount = Math.max(0, chaptersRead);
-  const rawLevel = Math.floor(safeCount / EXP_PER_LEVEL) + 1;
-  return Math.min(MAX_LEVEL, rawLevel);
-};
-
-const getUserLevelMap = async (
-  userIds: string[],
-): Promise<Map<string, number>> => {
-  const uniqueUserIds = Array.from(
-    new Set(userIds.map((id) => String(id || "").trim()).filter(Boolean)),
-  );
-  const levelMap = new Map<string, number>();
-
-  if (uniqueUserIds.length === 0) {
-    return levelMap;
-  }
-
-  await connectToDatabase();
-
-  const rows = await ReadChapterModel.aggregate([
-    { $match: { userId: { $in: uniqueUserIds } } },
-    { $group: { _id: "$userId", chaptersRead: { $sum: 1 } } },
-  ]);
-
-  for (const userId of uniqueUserIds) {
-    levelMap.set(userId, 1);
-  }
-
-  for (const row of rows as Array<{ _id: string; chaptersRead: number }>) {
-    levelMap.set(String(row._id), toLevel(Number(row.chaptersRead || 0)));
-  }
-
-  return levelMap;
 };
 
 const getViewerLikedCommentIdSet = async (
