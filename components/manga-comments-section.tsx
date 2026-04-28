@@ -22,7 +22,10 @@ import {
   type CommentViewer,
 } from "@/lib/actions/comment.actions";
 import { formatRelativeTime } from "@/lib/date-time";
-import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
+import {
+  getLevelBadgeTier,
+  getLevelUsernameEffect,
+} from "@/lib/level-badge-tiers";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type MangaCommentsSectionProps = {
   comicSlug: string;
+  comicName: string;
   chapterName?: string;
   className?: string;
 };
@@ -50,7 +54,9 @@ const sortOldestFirst = (a: CommentFeedItem, b: CommentFeedItem) =>
 const normalizeComment = (comment: CommentFeedItem): CommentFeedItem => ({
   ...comment,
   id: String(comment.id),
-  parentCommentId: comment.parentCommentId ? String(comment.parentCommentId) : null,
+  parentCommentId: comment.parentCommentId
+    ? String(comment.parentCommentId)
+    : null,
 });
 
 const resolveThreadRootId = (
@@ -75,6 +81,7 @@ const resolveThreadRootId = (
 
 export function MangaCommentsSection({
   comicSlug,
+  comicName,
   chapterName,
   className,
 }: MangaCommentsSectionProps) {
@@ -84,10 +91,12 @@ export function MangaCommentsSection({
   const [newComment, setNewComment] = useState("");
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [collapsedReplyThreads, setCollapsedReplyThreads] = useState<Set<string>>(
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(
     new Set(),
   );
+  const [collapsedReplyThreads, setCollapsedReplyThreads] = useState<
+    Set<string>
+  >(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittingReplyTo, setSubmittingReplyTo] = useState<string | null>(
@@ -98,7 +107,10 @@ export function MangaCommentsSection({
   );
 
   const isChapterScope = Boolean(chapterName);
-  const viewerUsernameEffect = viewer ? getLevelUsernameEffect(viewer.level) : null;
+  const normalizedComicName = comicName?.trim() || "";
+  const viewerUsernameEffect = viewer
+    ? getLevelUsernameEffect(viewer.level)
+    : null;
 
   const scopeMeta = useMemo(
     () =>
@@ -109,7 +121,8 @@ export function MangaCommentsSection({
           }
         : {
             title: "Comments",
-            subtitle: "This feed combines manga comments and all chapter comments.",
+            subtitle:
+              "This feed combines manga comments and all chapter comments.",
           },
     [chapterName, isChapterScope],
   );
@@ -136,7 +149,10 @@ export function MangaCommentsSection({
   }, [comments]);
 
   const rootComments = useMemo(
-    () => comments.filter((comment) => !comment.parentCommentId).sort(sortNewestFirst),
+    () =>
+      comments
+        .filter((comment) => !comment.parentCommentId)
+        .sort(sortNewestFirst),
     [comments],
   );
 
@@ -246,6 +262,7 @@ export function MangaCommentsSection({
     try {
       const result = await createComment({
         comicSlug,
+        comicName: normalizedComicName || undefined,
         content,
         targetType: isChapterScope ? "chapter" : "manga",
         chapterName: chapterName || undefined,
@@ -293,6 +310,7 @@ export function MangaCommentsSection({
     try {
       const result = await createComment({
         comicSlug,
+        comicName: normalizedComicName || undefined,
         content: draft,
         parentCommentId: targetComment.id,
       });
@@ -308,7 +326,9 @@ export function MangaCommentsSection({
       setThreadExpanded(rootId, true);
 
       if (result.comment) {
-        const normalizedReply = normalizeComment(result.comment as CommentFeedItem);
+        const normalizedReply = normalizeComment(
+          result.comment as CommentFeedItem,
+        );
         const safeReply = normalizedReply.parentCommentId
           ? normalizedReply
           : { ...normalizedReply, parentCommentId: targetComment.id };
@@ -412,7 +432,10 @@ export function MangaCommentsSection({
     }
   };
 
-  const renderReplyComposer = (targetComment: CommentFeedItem, nested = false) => {
+  const renderReplyComposer = (
+    targetComment: CommentFeedItem,
+    nested = false,
+  ) => {
     if (activeReplyId !== targetComment.id) return null;
 
     const draft = replyDrafts[targetComment.id] || "";
@@ -439,7 +462,9 @@ export function MangaCommentsSection({
           className="resize-none border-primary/20 bg-background/70 text-sm"
         />
         <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="text-xs text-muted-foreground">{draft.trim().length}/1000</span>
+          <span className="text-xs text-muted-foreground">
+            {draft.trim().length}/1000
+          </span>
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -479,9 +504,16 @@ export function MangaCommentsSection({
           nested && "rounded-lg border border-border/55 bg-background/30 p-3",
         )}
       >
-        <Avatar className={cn("mt-0.5 border border-border", nested ? "h-8 w-8" : "h-9 w-9")}>
+        <Avatar
+          className={cn(
+            "mt-0.5 border border-border",
+            nested ? "h-8 w-8" : "h-9 w-9",
+          )}
+        >
           <AvatarImage src={comment.userImage} alt={comment.userName} />
-          <AvatarFallback>{comment.userName.charAt(0).toUpperCase()}</AvatarFallback>
+          <AvatarFallback>
+            {comment.userName.charAt(0).toUpperCase()}
+          </AvatarFallback>
         </Avatar>
 
         <div className="min-w-0 flex-1">
@@ -534,7 +566,10 @@ export function MangaCommentsSection({
               onClick={() => handleToggleLike(comment)}
             >
               <ThumbsUp
-                className={cn("h-3.5 w-3.5", comment.likedByViewer && "fill-current")}
+                className={cn(
+                  "h-3.5 w-3.5",
+                  comment.likedByViewer && "fill-current",
+                )}
               />
               {comment.likeCount}
             </Button>
@@ -561,7 +596,8 @@ export function MangaCommentsSection({
     return (
       <div className={cn("space-y-2", depth > 1 && "ml-6")}>
         {children.map((child) => {
-          const hasGrandchildren = (childrenByParentId.get(child.id) || []).length > 0;
+          const hasGrandchildren =
+            (childrenByParentId.get(child.id) || []).length > 0;
           const grandChildCount = hasGrandchildren
             ? descendantCountById.get(child.id) ||
               (childrenByParentId.get(child.id) || []).length
@@ -619,7 +655,9 @@ export function MangaCommentsSection({
             <MessageSquareText className="h-5 w-5 text-primary" />
             {scopeMeta.title}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">{scopeMeta.subtitle}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {scopeMeta.subtitle}
+          </p>
         </div>
         <Badge variant="outline" className="border-primary/40 text-primary">
           {comments.length} {comments.length === 1 ? "comment" : "comments"}
@@ -659,7 +697,9 @@ export function MangaCommentsSection({
                     Lv {viewer.level}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">Share your thoughts</p>
+                <p className="text-xs text-muted-foreground">
+                  Share your thoughts
+                </p>
               </div>
             </div>
 
@@ -736,7 +776,9 @@ export function MangaCommentsSection({
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs text-primary hover:text-primary"
-                        onClick={() => setThreadExpanded(parent.id, !isExpanded)}
+                        onClick={() =>
+                          setThreadExpanded(parent.id, !isExpanded)
+                        }
                       >
                         <CornerDownRight className="mr-1 h-3.5 w-3.5" />
                         {isExpanded

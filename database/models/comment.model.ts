@@ -6,6 +6,7 @@ const commentSchema = new Schema(
     userName: { type: String, required: true },
     userImage: { type: String, default: "" },
     comicSlug: { type: String, required: true, index: true },
+    comicName: { type: String, default: "", index: true },
     targetType: {
       type: String,
       enum: ["manga", "chapter"],
@@ -24,6 +25,7 @@ const commentSchema = new Schema(
 );
 
 commentSchema.index({ comicSlug: 1, createdAt: -1 });
+commentSchema.index({ parentCommentId: 1, createdAt: -1 });
 commentSchema.index({
   comicSlug: 1,
   targetType: 1,

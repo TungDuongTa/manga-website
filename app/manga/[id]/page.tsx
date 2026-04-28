@@ -403,7 +403,10 @@ export default function MangaDetailPage({
           </div>
 
           <section className="mt-8">
-            <MangaCommentsSection comicSlug={comic.slug || id} />
+            <MangaCommentsSection
+              comicSlug={comic.slug || id}
+              comicName={comic.name || ""}
+            />
           </section>
         </div>
       </main>

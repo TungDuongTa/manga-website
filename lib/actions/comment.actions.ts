@@ -3,10 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
 import { connectToDatabase } from "@/database/mongoose";
-import { BookmarkModel } from "@/database/models/bookmark.model";
+import { CommentLikeModel } from "@/database/models/comment-like.model";
 import { CommentModel } from "@/database/models/comment.model";
-import { MangaViewModel } from "@/database/models/manga-view.model";
-import { MangaViewStatModel } from "@/database/models/manga-view-stat.model";
 import { ReadChapterModel } from "@/database/models/read-chapter.model";
 import { getSessionUser } from "@/lib/server-session";
 
@@ -48,6 +46,7 @@ export type HomeRecentCommentItem = {
 
 type CreateCommentInput = {
   comicSlug: string;
+  comicName?: string;
   content: string;
   targetType?: "manga" | "chapter";
   chapterName?: string;
@@ -82,7 +81,13 @@ const TOP_LEVEL_COMMENT_QUERY = {
   ],
 };
 const COMMENT_PROJECTION =
-  "_id userId userName userImage content comicSlug targetType chapterName parentCommentId likeCount likedBy createdAt updatedAt";
+  "_id userId userName userImage content comicSlug comicName targetType chapterName parentCommentId likeCount createdAt updatedAt";
+
+const isDuplicateKeyError = (error: unknown) => {
+  if (!error || typeof error !== "object") return false;
+  const maybeCode = (error as { code?: unknown }).code;
+  return maybeCode === 11000;
+};
 
 const toLevel = (chaptersRead: number) => {
   const safeCount = Math.max(0, chaptersRead);
@@ -90,93 +95,9 @@ const toLevel = (chaptersRead: number) => {
   return Math.min(MAX_LEVEL, rawLevel);
 };
 
-const toComicDisplayNameFromSlug = (slug: string) =>
-  slug
-    .split("-")
-    .map((chunk) => chunk.trim())
-    .filter(Boolean)
-    .map((chunk) => `${chunk.charAt(0).toUpperCase()}${chunk.slice(1)}`)
-    .join(" ");
-
-const getComicNameMap = async (comicSlugs: string[]) => {
-  const uniqueSlugs = Array.from(
-    new Set(comicSlugs.map((slug) => String(slug || "").trim()).filter(Boolean)),
-  );
-
-  const map = new Map<string, string>();
-  if (uniqueSlugs.length === 0) return map;
-
-  const setComicName = (slugValue: unknown, nameValue: unknown) => {
-    const slug = String(slugValue || "").trim();
-    const name = String(nameValue || "").trim();
-    if (!slug || !name || map.has(slug)) return;
-    map.set(slug, name);
-  };
-
-  const [viewStats, views, reads, bookmarks] = await Promise.all([
-    MangaViewStatModel.find({
-      comicSlug: { $in: uniqueSlugs },
-      comicName: { $nin: ["", null] },
-    })
-      .select("comicSlug comicName")
-      .lean(),
-    MangaViewModel.aggregate([
-      {
-        $match: {
-          comicSlug: { $in: uniqueSlugs },
-          comicName: { $nin: ["", null] },
-        },
-      },
-      { $sort: { viewedAt: -1, updatedAt: -1 } },
-      { $group: { _id: "$comicSlug", comicName: { $first: "$comicName" } } },
-    ]),
-    ReadChapterModel.aggregate([
-      {
-        $match: {
-          comicSlug: { $in: uniqueSlugs },
-          comicName: { $nin: ["", null] },
-        },
-      },
-      { $sort: { readAt: -1, updatedAt: -1 } },
-      { $group: { _id: "$comicSlug", comicName: { $first: "$comicName" } } },
-    ]),
-    BookmarkModel.aggregate([
-      {
-        $match: {
-          slug: { $in: uniqueSlugs },
-          name: { $nin: ["", null] },
-        },
-      },
-      { $sort: { updatedAt: -1 } },
-      { $group: { _id: "$slug", comicName: { $first: "$name" } } },
-    ]),
-  ]);
-
-  for (const doc of viewStats as Array<{ comicSlug: string; comicName: string }>) {
-    setComicName(doc.comicSlug, doc.comicName);
-  }
-
-  for (const doc of views as Array<{ _id: string; comicName: string }>) {
-    setComicName(doc._id, doc.comicName);
-  }
-
-  for (const doc of reads as Array<{ _id: string; comicName: string }>) {
-    setComicName(doc._id, doc.comicName);
-  }
-
-  for (const doc of bookmarks as Array<{ _id: string; comicName: string }>) {
-    setComicName(doc._id, doc.comicName);
-  }
-
-  for (const slug of uniqueSlugs) {
-    if (map.has(slug)) continue;
-    map.set(slug, toComicDisplayNameFromSlug(slug));
-  }
-
-  return map;
-};
-
-const getUserLevelMap = async (userIds: string[]): Promise<Map<string, number>> => {
+const getUserLevelMap = async (
+  userIds: string[],
+): Promise<Map<string, number>> => {
   const uniqueUserIds = Array.from(
     new Set(userIds.map((id) => String(id || "").trim()).filter(Boolean)),
   );
@@ -204,9 +125,31 @@ const getUserLevelMap = async (userIds: string[]): Promise<Map<string, number>> 
   return levelMap;
 };
 
+const getViewerLikedCommentIdSet = async (
+  viewerId: string | null | undefined,
+  commentIds: string[],
+): Promise<Set<string>> => {
+  if (!viewerId) return new Set<string>();
+
+  const uniqueCommentIds = Array.from(
+    new Set(commentIds.map((id) => String(id || "").trim()).filter(Boolean)),
+  );
+  if (uniqueCommentIds.length === 0) return new Set<string>();
+
+  const likes = await CommentLikeModel.find({
+    userId: viewerId,
+    commentId: { $in: uniqueCommentIds },
+  })
+    .select("commentId")
+    .lean();
+
+  return new Set(likes.map((like: any) => String(like.commentId)));
+};
+
 const toFeedItem = (
   doc: any,
   viewerId?: string | null,
+  likedCommentIds?: Set<string>,
   levelMap?: Map<string, number>,
 ): CommentFeedItem => ({
   id: String(doc._id),
@@ -221,9 +164,7 @@ const toFeedItem = (
   userLevel: levelMap?.get(String(doc.userId)) ?? 1,
   likeCount: Number.isFinite(doc.likeCount) ? doc.likeCount : 0,
   likedByViewer:
-    Boolean(viewerId) &&
-    Array.isArray(doc.likedBy) &&
-    doc.likedBy.includes(String(viewerId)),
+    Boolean(viewerId) && Boolean(likedCommentIds?.has(String(doc._id))),
   createdAt: new Date(
     doc.createdAt || doc.updatedAt || Date.now(),
   ).toISOString(),
@@ -313,9 +254,15 @@ export const getMangaComments = async (
 
   await connectToDatabase();
   const docs = await fetchCommentsWithAncestors({ comicSlug: normalizedSlug });
+  const likedCommentIds = await getViewerLikedCommentIdSet(
+    user?.id,
+    docs.map((doc: any) => String(doc._id)),
+  );
   const levelMap = await getUserLevelMap(docs.map((doc: any) => doc.userId));
 
-  return docs.map((doc: any) => toFeedItem(doc, user?.id, levelMap));
+  return docs.map((doc: any) =>
+    toFeedItem(doc, user?.id, likedCommentIds, levelMap),
+  );
 };
 
 export const getChapterComments = async (
@@ -333,9 +280,15 @@ export const getChapterComments = async (
     targetType: "chapter",
     chapterName: normalizedChapter,
   });
+  const likedCommentIds = await getViewerLikedCommentIdSet(
+    user?.id,
+    docs.map((doc: any) => String(doc._id)),
+  );
   const levelMap = await getUserLevelMap(docs.map((doc: any) => doc.userId));
 
-  return docs.map((doc: any) => toFeedItem(doc, user?.id, levelMap));
+  return docs.map((doc: any) =>
+    toFeedItem(doc, user?.id, likedCommentIds, levelMap),
+  );
 };
 
 export const getRecentTopLevelComments = async (
@@ -356,21 +309,15 @@ export const getRecentTopLevelComments = async (
       .limit(safeLimit)
       .lean();
 
-    const comicNameMap = await getComicNameMap(
-      docs.map((doc: any) => String(doc.comicSlug || "")),
-    );
     const levelMap = await getUserLevelMap(
       docs.map((doc: any) => String(doc.userId || "")),
     );
 
     return docs.map((doc: any) => {
       const comicSlug = String(doc.comicSlug || "").trim();
+      const storedComicName = String(doc.comicName || "").trim();
       const userId = String(doc.userId || "").trim();
-      const comicName =
-        comicNameMap.get(comicSlug) ||
-        toComicDisplayNameFromSlug(comicSlug) ||
-        comicSlug ||
-        "Unknown Manga";
+      const comicName = storedComicName || comicSlug || "Unknown Manga";
 
       return {
         id: String(doc._id),
@@ -406,10 +353,12 @@ export const createComment = async (
   }
 
   const comicSlug = input.comicSlug.trim();
+  const comicName = input.comicName?.trim() || "";
   const content = input.content.trim();
   const chapterName = input.chapterName?.trim() || null;
   const parentCommentId = input.parentCommentId?.trim() || null;
   let normalizedParentCommentId: string | null = null;
+  let resolvedComicName = comicName || comicSlug;
 
   if (!comicSlug) {
     return { success: false, message: "Invalid manga identifier." };
@@ -439,7 +388,7 @@ export const createComment = async (
       _id: parentCommentId,
       comicSlug,
     })
-      .select("_id comicSlug targetType chapterName parentCommentId")
+      .select("_id comicSlug comicName targetType chapterName parentCommentId")
       .lean();
 
     if (!parent) {
@@ -449,6 +398,8 @@ export const createComment = async (
     resolvedTargetType = parent.targetType;
     resolvedChapterName = parent.chapterName || null;
     normalizedParentCommentId = String(parent._id);
+    resolvedComicName =
+      String(parent.comicName || "").trim() || resolvedComicName;
   } else {
     if (!input.targetType) {
       return { success: false, message: "Missing comment target." };
@@ -470,12 +421,12 @@ export const createComment = async (
     userName: user.name || user.email || "User",
     userImage: user.image || "",
     comicSlug,
+    comicName: resolvedComicName,
     targetType: resolvedTargetType,
     chapterName: resolvedChapterName,
     parentCommentId: normalizedParentCommentId,
     content,
     likeCount: 0,
-    likedBy: [],
   });
 
   // Safety write: if a stale dev-cached schema is active, create() can drop
@@ -503,7 +454,12 @@ export const createComment = async (
     success: true,
     message: "Comment posted.",
     comment: {
-      ...toFeedItem(createdFromDb || created.toObject(), user.id, levelMap),
+      ...toFeedItem(
+        createdFromDb || created.toObject(),
+        user.id,
+        new Set<string>(),
+        levelMap,
+      ),
       parentCommentId: normalizedParentCommentId,
     },
   };
@@ -528,44 +484,55 @@ export const toggleCommentLike = async (
 
   await connectToDatabase();
   const existing = await CommentModel.findById(normalizedId)
-    .select("_id comicSlug targetType chapterName likedBy likeCount")
+    .select("_id comicSlug targetType chapterName")
     .lean();
 
   if (!existing) {
     return { success: false, message: "Comment not found." };
   }
 
-  const alreadyLiked =
-    Array.isArray(existing.likedBy) && existing.likedBy.includes(user.id);
-
-  const update = alreadyLiked
-    ? {
-        $pull: { likedBy: user.id },
-        $inc: { likeCount: -1 },
-      }
-    : {
-        $addToSet: { likedBy: user.id },
-        $inc: { likeCount: 1 },
-      };
-
-  await CommentModel.updateOne({ _id: normalizedId }, update);
-
-  const updated = await CommentModel.findById(normalizedId)
-    .select("likeCount")
+  const removedLike = await CommentLikeModel.findOneAndDelete({
+    commentId: normalizedId,
+    userId: user.id,
+  })
+    .select("_id")
     .lean();
 
-  const likeCount = Math.max(0, updated?.likeCount || 0);
+  if (!removedLike) {
+    try {
+      await CommentLikeModel.create({
+        commentId: normalizedId,
+        userId: user.id,
+      });
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  const [likeCount, likedByViewer] = await Promise.all([
+    CommentLikeModel.countDocuments({ commentId: normalizedId }),
+    CommentLikeModel.exists({ commentId: normalizedId, userId: user.id }),
+  ]);
+
+  await CommentModel.updateOne(
+    { _id: normalizedId },
+    { $set: { likeCount: Math.max(0, likeCount) } },
+  );
 
   revalidatePath(`/manga/${existing.comicSlug}`);
   revalidatePath("/");
   if (existing.targetType === "chapter" && existing.chapterName) {
-    revalidatePath(`/manga/${existing.comicSlug}/chapter/${existing.chapterName}`);
+    revalidatePath(
+      `/manga/${existing.comicSlug}/chapter/${existing.chapterName}`,
+    );
   }
 
   return {
     success: true,
-    message: alreadyLiked ? "Like removed." : "Liked comment.",
-    liked: !alreadyLiked,
-    likeCount,
+    message: likedByViewer ? "Liked comment." : "Like removed.",
+    liked: Boolean(likedByViewer),
+    likeCount: Math.max(0, likeCount),
   };
 };

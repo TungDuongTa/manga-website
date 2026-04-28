@@ -404,6 +404,7 @@ export default function ChapterReaderPage({
         <section className="mx-auto max-w-7xl px-4 pb-8">
           <MangaCommentsSection
             comicSlug={comic.slug || id}
+            comicName={comic.name || ""}
             chapterName={chapter}
           />
         </section>
