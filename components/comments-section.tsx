@@ -2,6 +2,9 @@ import Link from "next/link";
 import { MessageCircle, ThumbsUp } from "lucide-react";
 import type { HomeRecentCommentItem } from "@/lib/actions/comment.actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
 
 interface CommentsSectionProps {
   comments: HomeRecentCommentItem[];
@@ -65,6 +68,8 @@ export function CommentsSection({ comments }: CommentsSectionProps) {
         <div className="max-h-[34rem] space-y-3 overflow-y-auto pr-1">
           {comments.map((comment) => {
             const chapterLabel = formatChapterLabel(comment.chapterName);
+            const usernameEffect = getLevelUsernameEffect(comment.userLevel);
+            const levelBadgeTier = getLevelBadgeTier(comment.userLevel);
 
             return (
               <article
@@ -73,7 +78,10 @@ export function CommentsSection({ comments }: CommentsSectionProps) {
               >
                 <div className="flex items-start gap-3">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={comment.userImage} alt={comment.userName} />
+                    <AvatarImage
+                      src={comment.userImage}
+                      alt={comment.userName}
+                    />
                     <AvatarFallback className="text-xs">
                       {getUserInitial(comment.userName)}
                     </AvatarFallback>
@@ -81,9 +89,26 @@ export function CommentsSection({ comments }: CommentsSectionProps) {
 
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-semibold text-foreground">
-                        {comment.userName}
-                      </span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={cn(
+                            "truncate text-sm font-semibold tracking-wide",
+                            usernameEffect.className,
+                          )}
+                          title={`${usernameEffect.name} username effect`}
+                        >
+                          {comment.userName}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "h-5 shrink-0 rounded-full px-1.5 text-[10px] font-semibold",
+                            levelBadgeTier.className,
+                          )}
+                        >
+                          Lv {comment.userLevel}
+                        </Badge>
+                      </div>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {getRelativeTime(comment.createdAt)}
                       </span>
@@ -99,9 +124,9 @@ export function CommentsSection({ comments }: CommentsSectionProps) {
                       {chapterLabel && (
                         <Link
                           href={`/manga/${comment.comicSlug}/chapter/${encodeURIComponent(comment.chapterName || "")}`}
-                          className="truncate text-muted-foreground hover:text-foreground"
+                          className="truncate font-medium text-rose-500 hover:text-rose-400 dark:text-rose-300 dark:hover:text-rose-200"
                         >
-                          {chapterLabel}
+                          - {chapterLabel}
                         </Link>
                       )}
                     </div>

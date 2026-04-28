@@ -31,6 +31,7 @@ export type MangaRankingPeriod = "daily" | "weekly" | "monthly" | "allTime";
 export type MangaRankingItem = OTruyenComic & {
   periodViews: number;
   totalViews: number;
+  latestChapterName?: string | null;
 };
 
 export type MangaRankings = {
@@ -58,13 +59,18 @@ const toStoredCategories = (categories: Category[] = []) =>
     slug: category.slug,
   }));
 
-const toRankingItem = (doc: any, periodViews: number): MangaRankingItem => {
+const toRankingItem = (
+  doc: any,
+  periodViews: number,
+  latestChapterMap?: Map<string, string>,
+): MangaRankingItem => {
   const totalViews = Number(doc.totalViews || 0);
+  const comicSlug = String(doc.comicSlug || "");
 
   return {
-    _id: doc.comicId || doc.comicSlug,
-    name: doc.comicName || doc.comicSlug,
-    slug: doc.comicSlug,
+    _id: doc.comicId || comicSlug,
+    name: doc.comicName || comicSlug,
+    slug: comicSlug,
     origin_name: [],
     status: doc.status || "ongoing",
     thumb_url: doc.thumbUrl || "",
@@ -74,6 +80,7 @@ const toRankingItem = (doc: any, periodViews: number): MangaRankingItem => {
       doc.comicUpdatedAt ||
       new Date(doc.updatedAt || doc.createdAt || Date.now()).toISOString(),
     chaptersLatest: [],
+    latestChapterName: latestChapterMap?.get(comicSlug) || null,
     totalViews,
     periodViews: Number(periodViews || 0),
   };
@@ -131,12 +138,13 @@ const getPeriodRanking = async (
 const buildPeriodRanking = (
   rows: PeriodRankingRow[],
   statMap: Map<string, any>,
+  latestChapterMap: Map<string, string>,
 ): MangaRankingItem[] =>
   rows
     .map((row) => {
       const stat = statMap.get(row._id);
       if (!stat) return null;
-      return toRankingItem(stat, row.periodViews);
+      return toRankingItem(stat, row.periodViews, latestChapterMap);
     })
     .filter((item): item is MangaRankingItem => Boolean(item));
 
@@ -248,26 +256,56 @@ export const getMangaRankings = async (
         .lean(),
     ]);
 
-    const slugs = Array.from(
+    const periodSlugs = Array.from(
       new Set(
         [...dailyRows, ...weeklyRows, ...monthlyRows].map((row) => row._id),
       ),
     );
+    const allTimeSlugs = allTimeRows.map((row: any) =>
+      String(row.comicSlug || "").trim(),
+    );
+    const rankingSlugs = Array.from(
+      new Set([...periodSlugs, ...allTimeSlugs].filter(Boolean)),
+    );
 
     const statDocs =
-      slugs.length > 0
-        ? await MangaViewStatModel.find({ comicSlug: { $in: slugs } }).lean()
+      periodSlugs.length > 0
+        ? await MangaViewStatModel.find({ comicSlug: { $in: periodSlugs } }).lean()
         : [];
     const statMap = new Map<string, any>(
       statDocs.map((doc: any) => [String(doc.comicSlug), doc]),
     );
+    const latestChapterRows =
+      rankingSlugs.length > 0
+        ? await MangaViewModel.aggregate([
+            {
+              $match: {
+                comicSlug: { $in: rankingSlugs },
+                chapterName: { $nin: ["", null] },
+              },
+            },
+            { $sort: { viewedAt: -1, updatedAt: -1 } },
+            {
+              $group: {
+                _id: "$comicSlug",
+                latestChapterName: { $first: "$chapterName" },
+              },
+            },
+          ])
+        : [];
+    const latestChapterMap = new Map<string, string>(
+      latestChapterRows.map((row: any) => [
+        String(row._id || ""),
+        String(row.latestChapterName || ""),
+      ]),
+    );
 
     return {
-      daily: buildPeriodRanking(dailyRows, statMap),
-      weekly: buildPeriodRanking(weeklyRows, statMap),
-      monthly: buildPeriodRanking(monthlyRows, statMap),
+      daily: buildPeriodRanking(dailyRows, statMap, latestChapterMap),
+      weekly: buildPeriodRanking(weeklyRows, statMap, latestChapterMap),
+      monthly: buildPeriodRanking(monthlyRows, statMap, latestChapterMap),
       allTime: allTimeRows.map((row: any) =>
-        toRankingItem(row, Number(row.totalViews || 0)),
+        toRankingItem(row, Number(row.totalViews || 0), latestChapterMap),
       ),
     };
   } catch (error) {

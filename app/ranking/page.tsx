@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Trophy, Flame, TrendingUp, Clock } from "lucide-react";
+import { Trophy, Flame, TrendingUp, Clock, Eye } from "lucide-react";
 import { MangaCardApi } from "@/components/manga-card-api";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -131,18 +131,26 @@ export default async function RankingPage({ searchParams }: RankingPageProps) {
                     ? comic.totalViews || 0
                     : comic.periodViews || 0,
                 );
+                const latestChapterRaw = String(
+                  comic.latestChapterName || comic.chaptersLatest?.[0]?.chapter_name || "",
+                ).trim();
+                const latestChapterLabel = latestChapterRaw
+                  ? latestChapterRaw.toLowerCase().startsWith("chapter")
+                    ? latestChapterRaw
+                    : `Chapter ${latestChapterRaw}`
+                  : "Chapter -";
 
                 return (
                   <article key={`${activeTab}-${comic._id}-${rank}`}>
                     <MangaCardApi comic={comic} showLatestChapter={false} />
                     <div className="mt-2 flex items-center justify-between gap-2">
-                      <Badge
-                        variant={rank <= 3 ? "default" : "outline"}
-                        className="text-xs"
-                      >
-                        #{rank}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground">{views} views</p>
+                      <p className="min-w-0 truncate text-xs text-muted-foreground">
+                        {latestChapterLabel}
+                      </p>
+                      <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>{views}</span>
+                      </p>
                     </div>
                   </article>
                 );
