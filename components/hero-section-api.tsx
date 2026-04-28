@@ -128,7 +128,7 @@ export function HeroSectionApi({ featuredComics }: HeroSectionApiProps) {
 
             <div className="flex flex-wrap gap-3">
               <Link href={`/manga/${currentComic.slug}`}>
-                <Button size="lg" className="gap-2 shadow-lg">
+                <Button size="lg" className="gap-2 shadow-lg cursor-pointer">
                   <Play className="h-4 w-4" />
                   Start Reading
                 </Button>
@@ -137,7 +137,7 @@ export function HeroSectionApi({ featuredComics }: HeroSectionApiProps) {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="gap-2 bg-background/50 backdrop-blur-sm hover:bg-background/80"
+                  className="gap-2 bg-background/50 backdrop-blur-sm hover:bg-background/80 cursor-pointer"
                 >
                   <BookOpen className="h-4 w-4" />
                   View Details

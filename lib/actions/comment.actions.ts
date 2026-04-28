@@ -38,6 +38,7 @@ export type HomeRecentCommentItem = {
   id: string;
   userName: string;
   userImage: string;
+  userLevel: number;
   content: string;
   comicSlug: string;
   comicName: string;
@@ -366,9 +367,13 @@ export const getRecentTopLevelComments = async (
     const comicNameMap = await getComicNameMap(
       docs.map((doc: any) => String(doc.comicSlug || "")),
     );
+    const levelMap = await getUserLevelMap(
+      docs.map((doc: any) => String(doc.userId || "")),
+    );
 
     return docs.map((doc: any) => {
       const comicSlug = String(doc.comicSlug || "").trim();
+      const userId = String(doc.userId || "").trim();
       const comicName =
         comicNameMap.get(comicSlug) ||
         toComicDisplayNameFromSlug(comicSlug) ||
@@ -379,6 +384,7 @@ export const getRecentTopLevelComments = async (
         id: String(doc._id),
         userName: doc.userName || "User",
         userImage: doc.userImage || "",
+        userLevel: levelMap.get(userId) ?? 1,
         content: doc.content || "",
         comicSlug,
         comicName,

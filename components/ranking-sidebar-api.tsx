@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Trophy, TrendingUp, Clock, Flame, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Trophy, TrendingUp, Clock, Flame, Loader2, Eye } from "lucide-react";
 import { getImageUrl } from "@/types/otruyen-types";
 import {
   getMangaRankings,
@@ -37,6 +36,15 @@ const periodTabs: Array<{
   { key: "monthly", label: "Monthly", Icon: Clock },
   { key: "allTime", label: "All Time", Icon: Trophy },
 ];
+
+const formatLatestChapter = (chapterName?: string | null) => {
+  const normalized = String(chapterName || "").trim();
+  if (!normalized) return "Chapter -";
+
+  return normalized.toLowerCase().startsWith("chapter")
+    ? normalized
+    : `Chapter ${normalized}`;
+};
 
 export function RankingSidebarApi({ limit = 10 }: RankingSidebarApiProps) {
   const [activeTab, setActiveTab] = useState<MangaRankingPeriod>("daily");
@@ -141,23 +149,23 @@ export function RankingSidebarApi({ limit = 10 }: RankingSidebarApiProps) {
                 <h4 className="font-medium text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">
                   {comic.name}
                 </h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatViewCount(
-                    activeTab === "allTime"
-                      ? comic.totalViews || 0
-                      : comic.periodViews || 0,
-                  )}{" "}
-                  views
-                </p>
-
-                {comic.category.length > 0 && (
-                  <Badge
-                    variant="outline"
-                    className="text-xs mt-1 border-border/50"
-                  >
-                    {comic.category[0].name}
-                  </Badge>
-                )}
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">
+                    {formatLatestChapter(
+                      comic.latestChapterName || comic.chaptersLatest?.[0]?.chapter_name,
+                    )}
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1">
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>
+                      {formatViewCount(
+                        activeTab === "allTime"
+                          ? comic.totalViews || 0
+                          : comic.periodViews || 0,
+                      )}
+                    </span>
+                  </span>
+                </div>
               </div>
             </Link>
           ))

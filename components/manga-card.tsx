@@ -15,17 +15,7 @@ export function MangaCard({
   showLatestChapter = true,
   variant = "default",
 }: MangaCardProps) {
-  const statusColors = {
-    Ongoing: "bg-accent text-accent-foreground",
-    Completed: "bg-primary text-primary-foreground",
-    Hiatus: "bg-muted text-muted-foreground",
-  };
-
-  const typeColors = {
-    Manga: "border-chart-5 text-chart-5",
-    Manhwa: "border-primary text-primary",
-    Manhua: "border-accent text-accent",
-  };
+  const latestChapterLabel = String(manga.latestChapter || "").trim() || "coming soon";
 
   if (variant === "horizontal") {
     return (
@@ -44,11 +34,9 @@ export function MangaCard({
               {manga.title}
             </h3>
             <div className="flex items-center gap-2 mt-1">
-              <Badge
-                variant="outline"
-                className={`text-xs ${typeColors[manga.type]}`}
-              >
-                {manga.type}
+              <Badge variant="outline" className="inline-flex items-center gap-1 text-xs">
+                <Clock className="h-3 w-3" />
+                {manga.lastUpdated}
               </Badge>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Star className="h-3 w-3 fill-chart-3 text-chart-3" />
@@ -58,7 +46,7 @@ export function MangaCard({
             {showLatestChapter && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {manga.latestChapter} - {manga.lastUpdated}
+                {latestChapterLabel}
               </p>
             )}
           </div>
@@ -99,19 +87,12 @@ export function MangaCard({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        {/* Status Badge */}
-        <Badge
-          className={`absolute top-2 left-2 text-xs ${statusColors[manga.status]}`}
-        >
-          {manga.status}
-        </Badge>
-
-        {/* Type Badge */}
         <Badge
           variant="outline"
-          className={`absolute top-2 right-2 text-xs border ${typeColors[manga.type]} bg-black/50`}
+          className="absolute top-2 left-2 inline-flex items-center gap-1 border-white/35 bg-black/60 text-xs text-white backdrop-blur-sm"
         >
-          {manga.type}
+          <Clock className="h-3 w-3" />
+          {manga.lastUpdated}
         </Badge>
 
         {/* Rating */}
@@ -128,7 +109,7 @@ export function MangaCard({
       {showLatestChapter && (
         <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          {manga.latestChapter}
+          {latestChapterLabel}
         </p>
       )}
     </Link>

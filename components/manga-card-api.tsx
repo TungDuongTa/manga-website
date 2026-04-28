@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   OTruyenComic,
   getImageUrl,
-  formatStatus,
   formatUpdatedAt,
 } from "@/types/otruyen-types";
 
@@ -26,11 +25,7 @@ export function MangaCardApi({
   const coverSrc = comic.thumb_url?.trim()
     ? getImageUrl(comic.thumb_url)
     : FALLBACK_COVER;
-
-  const statusColors: Record<string, string> = {
-    ongoing: "bg-accent text-accent-foreground",
-    completed: "bg-primary text-primary-foreground",
-  };
+  const latestChapterName = String(comic.chaptersLatest?.[0]?.chapter_name || "").trim();
 
   if (variant === "horizontal") {
     return (
@@ -48,16 +43,17 @@ export function MangaCardApi({
             <h3 className="font-medium text-foreground line-clamp-1 group-hover:text-primary transition-colors">
               {comic.name}
             </h3>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs">
-                {formatStatus(comic.status)}
-              </Badge>
-            </div>
-            {showLatestChapter && comic.chaptersLatest?.[0] && (
+            <Badge
+              variant="outline"
+              className="mt-1 inline-flex w-fit items-center gap-1 text-xs"
+            >
+              <Clock className="h-3 w-3" />
+              {formatUpdatedAt(comic.updatedAt)}
+            </Badge>
+            {showLatestChapter && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                Chapter {comic.chaptersLatest[0].chapter_name} -{" "}
-                {formatUpdatedAt(comic.updatedAt)}
+                {latestChapterName ? `Chapter ${latestChapterName}` : "coming soon"}
               </p>
             )}
           </div>
@@ -100,32 +96,23 @@ export function MangaCardApi({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        {/* Status Badge */}
         <Badge
-          className={`absolute top-2 left-2 text-xs ${statusColors[comic.status] || "bg-muted"}`}
+          variant="outline"
+          className="absolute top-2 left-2 inline-flex items-center gap-1 border-white/35 bg-black/60 text-xs text-white backdrop-blur-sm"
         >
-          {formatStatus(comic.status)}
+          <Clock className="h-3 w-3" />
+          {formatUpdatedAt(comic.updatedAt)}
         </Badge>
-
-        {/* Categories */}
-        {comic.category.length > 0 && (
-          <Badge
-            variant="outline"
-            className="absolute top-2 right-2 text-xs border-primary text-primary bg-black/50"
-          >
-            {comic.category[0].name}
-          </Badge>
-        )}
       </div>
 
       <h3 className="font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
         {comic.name}
       </h3>
 
-      {showLatestChapter && comic.chaptersLatest?.[0] && (
+      {showLatestChapter && (
         <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          Chapter {comic.chaptersLatest[0].chapter_name}
+          {latestChapterName ? `Chapter ${latestChapterName}` : "coming soon"}
         </p>
       )}
     </Link>

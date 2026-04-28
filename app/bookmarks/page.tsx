@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { Bookmark, ChevronLeft, ChevronRight, Clock3, Trash2 } from "lucide-react";
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Trash2,
+} from "lucide-react";
 import { MangaCardApi } from "@/components/manga-card-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +49,9 @@ interface BookmarksPageProps {
   }>;
 }
 
-export default async function BookmarksPage({ searchParams }: BookmarksPageProps) {
+export default async function BookmarksPage({
+  searchParams,
+}: BookmarksPageProps) {
   const params = await searchParams;
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -374,4 +382,3 @@ export default async function BookmarksPage({ searchParams }: BookmarksPageProps
     </div>
   );
 }
-
