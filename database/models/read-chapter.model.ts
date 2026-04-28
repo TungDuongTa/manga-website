@@ -31,6 +31,8 @@ readChapterSchema.index(
   { userId: 1, comicSlug: 1, chapterName: 1 },
   { unique: true },
 );
+readChapterSchema.index({ userId: 1, comicSlug: 1, readAt: -1 });
+readChapterSchema.index({ userId: 1, readAt: -1 });
 
 export const ReadChapterModel =
   models.ReadChapter || model("ReadChapter", readChapterSchema);

@@ -76,18 +76,18 @@ const calculateReadingExpStats = (chaptersRead: number): ReadingExpStats => {
   };
 };
 
-export const getCurrentUserReadingExpStats = async (): Promise<ReadingExpStats> => {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return calculateReadingExpStats(0);
-  }
+export const getCurrentUserReadingExpStats =
+  async (): Promise<ReadingExpStats> => {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return calculateReadingExpStats(0);
+    }
 
-  await connectToDatabase();
-  const chaptersRead = await ReadChapterModel.countDocuments({ userId });
+    await connectToDatabase();
+    const chaptersRead = await ReadChapterModel.countDocuments({ userId });
 
-  return calculateReadingExpStats(chaptersRead);
-};
-
+    return calculateReadingExpStats(chaptersRead);
+  };
 
 export const getReadChapterNames = async (
   comicSlug: string,
@@ -168,7 +168,9 @@ export const getCurrentUserReadingHistory = async (): Promise<
       existing.latestReadAt = readAtIso;
     }
 
-    if (compareChapterNames(row.chapterName, existing.latestReadChapterName) > 0) {
+    if (
+      compareChapterNames(row.chapterName, existing.latestReadChapterName) > 0
+    ) {
       existing.latestReadChapterName = row.chapterName;
     }
 
