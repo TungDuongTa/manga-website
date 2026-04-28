@@ -13,25 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { auth } from "@/lib/better-auth/auth";
 import { getVisiblePages } from "@/lib/pagination";
+import { formatShortDate } from "@/lib/date-time";
 import {
   getCurrentUserBookmarks,
   removeMangaBookmark,
 } from "@/lib/actions/bookmark.actions";
 import { getCurrentUserReadingHistory } from "@/lib/actions/read-chapter.actions";
-
-const formatBookmarkedDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-const formatHistoryDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 
 const ITEMS_PER_PAGE = 24;
 
@@ -176,7 +163,7 @@ export default async function BookmarksPage({
                         <MangaCardApi comic={manga} />
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <p className="text-xs text-muted-foreground">
-                            Saved {formatBookmarkedDate(manga.bookmarkedAt)}
+                            Saved {formatShortDate(manga.bookmarkedAt)}
                           </p>
                           <form action={removeAction}>
                             <Button
@@ -292,7 +279,7 @@ export default async function BookmarksPage({
                     <div key={manga.slug}>
                       <MangaCardApi comic={manga} />
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Last read {formatHistoryDate(manga.latestReadAt)}
+                        Last read {formatShortDate(manga.latestReadAt)}
                       </p>
                     </div>
                   ))}

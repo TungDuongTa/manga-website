@@ -86,53 +86,84 @@ const toRankingItem = (
   };
 };
 
-const getSinceDate = (period: "daily" | "weekly" | "monthly"): Date => {
-  const now = Date.now();
+const toPeriodRows = (rows: any[] = []): PeriodRankingRow[] =>
+  rows
+    .map((row) => ({
+      _id: String(row?._id || "").trim(),
+      periodViews: Number(row?.periodViews || 0),
+    }))
+    .filter((row) => Boolean(row._id) && row.periodViews > 0);
 
-  switch (period) {
-    case "daily":
-      return new Date(now - ONE_DAY_MS);
-    case "weekly":
-      return new Date(now - ONE_WEEK_MS);
-    case "monthly":
-      return new Date(now - THIRTY_DAYS_MS);
-    default:
-      return new Date(now - ONE_DAY_MS);
-  }
-};
-
-const getPeriodRanking = async (
-  sinceDate: Date,
+const getWindowRankings = async (
   limit: number,
-): Promise<PeriodRankingRow[]> => {
-  const rows = await MangaViewModel.aggregate([
+): Promise<{
+  daily: PeriodRankingRow[];
+  weekly: PeriodRankingRow[];
+  monthly: PeriodRankingRow[];
+}> => {
+  const now = Date.now();
+  const dailySince = new Date(now - ONE_DAY_MS);
+  const weeklySince = new Date(now - ONE_WEEK_MS);
+  const monthlySince = new Date(now - THIRTY_DAYS_MS);
+
+  const [result] = await MangaViewModel.aggregate([
     {
       $match: {
-        viewedAt: { $gte: sinceDate },
+        viewedAt: { $gte: monthlySince },
+      },
+    },
+    {
+      $project: {
+        comicSlug: 1,
+        viewedAt: 1,
       },
     },
     {
       $group: {
         _id: "$comicSlug",
-        periodViews: { $sum: 1 },
+        dailyViews: {
+          $sum: {
+            $cond: [{ $gte: ["$viewedAt", dailySince] }, 1, 0],
+          },
+        },
+        weeklyViews: {
+          $sum: {
+            $cond: [{ $gte: ["$viewedAt", weeklySince] }, 1, 0],
+          },
+        },
+        monthlyViews: { $sum: 1 },
         lastViewedAt: { $max: "$viewedAt" },
       },
     },
     {
-      $sort: {
-        periodViews: -1,
-        lastViewedAt: -1,
+      $facet: {
+        daily: [
+          { $match: { dailyViews: { $gt: 0 } } },
+          { $sort: { dailyViews: -1, lastViewedAt: -1 } },
+          { $limit: limit },
+          { $project: { _id: 1, periodViews: "$dailyViews" } },
+        ],
+        weekly: [
+          { $match: { weeklyViews: { $gt: 0 } } },
+          { $sort: { weeklyViews: -1, lastViewedAt: -1 } },
+          { $limit: limit },
+          { $project: { _id: 1, periodViews: "$weeklyViews" } },
+        ],
+        monthly: [
+          { $match: { monthlyViews: { $gt: 0 } } },
+          { $sort: { monthlyViews: -1, lastViewedAt: -1 } },
+          { $limit: limit },
+          { $project: { _id: 1, periodViews: "$monthlyViews" } },
+        ],
       },
-    },
-    {
-      $limit: limit,
     },
   ]);
 
-  return rows.map((row: any) => ({
-    _id: String(row._id || ""),
-    periodViews: Number(row.periodViews || 0),
-  }));
+  return {
+    daily: toPeriodRows(result?.daily),
+    weekly: toPeriodRows(result?.weekly),
+    monthly: toPeriodRows(result?.monthly),
+  };
 };
 
 const buildPeriodRanking = (
@@ -246,15 +277,15 @@ export const getMangaRankings = async (
   try {
     await connectToDatabase();
 
-    const [dailyRows, weeklyRows, monthlyRows, allTimeRows] = await Promise.all([
-      getPeriodRanking(getSinceDate("daily"), safeLimit),
-      getPeriodRanking(getSinceDate("weekly"), safeLimit),
-      getPeriodRanking(getSinceDate("monthly"), safeLimit),
+    const [windowRankings, allTimeRows] = await Promise.all([
+      getWindowRankings(safeLimit),
       MangaViewStatModel.find({ totalViews: { $gt: 0 } })
         .sort({ totalViews: -1, lastViewedAt: -1 })
         .limit(safeLimit)
         .lean(),
     ]);
+    const { daily: dailyRows, weekly: weeklyRows, monthly: monthlyRows } =
+      windowRankings;
 
     const periodSlugs = Array.from(
       new Set(
@@ -284,7 +315,7 @@ export const getMangaRankings = async (
                 chapterName: { $nin: ["", null] },
               },
             },
-            { $sort: { viewedAt: -1, updatedAt: -1 } },
+            { $sort: { viewedAt: -1 } },
             {
               $group: {
                 _id: "$comicSlug",

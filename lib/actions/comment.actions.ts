@@ -1,15 +1,14 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
-import { auth } from "@/lib/better-auth/auth";
 import { connectToDatabase } from "@/database/mongoose";
 import { BookmarkModel } from "@/database/models/bookmark.model";
 import { CommentModel } from "@/database/models/comment.model";
 import { MangaViewModel } from "@/database/models/manga-view.model";
 import { MangaViewStatModel } from "@/database/models/manga-view-stat.model";
 import { ReadChapterModel } from "@/database/models/read-chapter.model";
+import { getSessionUser } from "@/lib/server-session";
 
 export type CommentViewer = {
   id: string;
@@ -290,13 +289,6 @@ const fetchCommentsWithAncestors = async (query: Record<string, unknown>) => {
       new Date(b.createdAt || b.updatedAt || 0).getTime() -
       new Date(a.createdAt || a.updatedAt || 0).getTime(),
   );
-};
-
-const getSessionUser = async () => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  return session?.user ?? null;
 };
 
 export const getCommentViewer = async (): Promise<CommentViewer> => {
