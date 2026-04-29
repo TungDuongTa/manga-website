@@ -589,28 +589,66 @@ export const toggleCommentLike = async (
     .select("_id")
     .lean();
 
-  if (!removedLike) {
+  let likedByViewer = false;
+  let updatedLikeCount: number | null = null;
+
+  if (removedLike) {
+    const updatedComment = await CommentModel.findOneAndUpdate(
+      { _id: normalizedId },
+      { $inc: { likeCount: -1 } },
+      {
+        returnDocument: "after",
+        projection: { likeCount: 1 },
+        lean: true,
+      },
+    );
+
+    updatedLikeCount = Number(updatedComment?.likeCount ?? 0);
+    likedByViewer = false;
+  } else {
+    let createdLike = false;
     try {
       await CommentLikeModel.create({
         commentId: normalizedId,
         userId: user.id,
       });
+      createdLike = true;
     } catch (error) {
       if (!isDuplicateKeyError(error)) {
         throw error;
       }
     }
+
+    if (createdLike) {
+      const updatedComment = await CommentModel.findOneAndUpdate(
+        { _id: normalizedId },
+        { $inc: { likeCount: 1 } },
+        {
+          returnDocument: "after",
+          projection: { likeCount: 1 },
+          lean: true,
+        },
+      );
+
+      updatedLikeCount = Number(updatedComment?.likeCount ?? 0);
+      likedByViewer = true;
+    } else {
+      // Duplicate key means the like already exists (race-safe no-op on count).
+      const commentDoc = await CommentModel.findById(normalizedId)
+        .select("likeCount")
+        .lean();
+      updatedLikeCount = Number(commentDoc?.likeCount ?? 0);
+      likedByViewer = true;
+    }
   }
 
-  const [likeCount, likedByViewer] = await Promise.all([
-    CommentLikeModel.countDocuments({ commentId: normalizedId }),
-    CommentLikeModel.exists({ commentId: normalizedId, userId: user.id }),
-  ]);
-
-  await CommentModel.updateOne(
-    { _id: normalizedId },
-    { $set: { likeCount: Math.max(0, likeCount) } },
-  );
+  const safeLikeCount = Math.max(0, Math.floor(updatedLikeCount ?? 0));
+  if (safeLikeCount === 0) {
+    await CommentModel.updateOne(
+      { _id: normalizedId, likeCount: { $lt: 0 } },
+      { $set: { likeCount: 0 } },
+    );
+  }
 
   revalidatePath(`/manga/${existing.comicSlug}`);
   revalidatePath("/");
@@ -623,7 +661,7 @@ export const toggleCommentLike = async (
   return {
     success: true,
     message: likedByViewer ? "Liked comment." : "Like removed.",
-    liked: Boolean(likedByViewer),
-    likeCount: Math.max(0, likeCount),
+    liked: likedByViewer,
+    likeCount: safeLikeCount,
   };
 };
