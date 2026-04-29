@@ -38,6 +38,7 @@ export function MangaCardApi({
               src={coverSrc}
               alt={comic.name}
               fill
+              sizes="64px"
               className="object-cover transition-transform group-hover:scale-105"
             />
           </div>
@@ -74,6 +75,7 @@ export function MangaCardApi({
             src={coverSrc}
             alt={comic.name}
             fill
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
             className="object-cover transition-transform group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -94,6 +96,7 @@ export function MangaCardApi({
           src={coverSrc}
           alt={comic.name}
           fill
+          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           unoptimized
         />

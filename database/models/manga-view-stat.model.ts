@@ -28,7 +28,6 @@ const mangaViewStatSchema = new Schema(
 );
 
 mangaViewStatSchema.index({ totalViews: -1, lastViewedAt: -1 });
-mangaViewStatSchema.index({ comicSlug: 1 });
 
 export const MangaViewStatModel =
   models.MangaViewStat || model("MangaViewStat", mangaViewStatSchema);

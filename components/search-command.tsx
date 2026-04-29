@@ -138,6 +138,7 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
                       src={getImageUrl(comic.thumb_url)}
                       alt={comic.name}
                       fill
+                      sizes="56px"
                       className="object-cover"
                       unoptimized
                     />

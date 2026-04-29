@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import {
   createComment,
   getChapterComments,
-  getCommentViewer,
   getMangaComments,
   toggleCommentLike,
   type CommentFeedItem,
@@ -190,14 +189,13 @@ export function MangaCommentsSection({
 
     setIsLoading(true);
     try {
-      const [viewerData, commentData] = await Promise.all([
-        getCommentViewer(),
+      const feedData =
         isChapterScope && chapterName
-          ? getChapterComments(comicSlug, chapterName)
-          : getMangaComments(comicSlug),
-      ]);
-      setViewer(viewerData);
-      setComments(commentData.map(normalizeComment));
+          ? await getChapterComments(comicSlug, chapterName)
+          : await getMangaComments(comicSlug);
+
+      setViewer(feedData.viewer);
+      setComments(feedData.comments.map(normalizeComment));
     } catch (error) {
       console.error("Failed to load comments:", error);
       toast.error("Could not load comments right now.");

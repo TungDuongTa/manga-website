@@ -31,6 +31,11 @@ export type CommentFeedItem = {
   createdAt: string;
 };
 
+export type CommentFeedResponse = {
+  viewer: CommentViewer;
+  comments: CommentFeedItem[];
+};
+
 export type HomeRecentCommentItem = {
   id: string;
   userName: string;
@@ -207,11 +212,25 @@ export const getCommentViewer = async (): Promise<CommentViewer> => {
   };
 };
 
+const toCommentViewer = (
+  user: Awaited<ReturnType<typeof getSessionUser>>,
+  levelMap: Map<string, number>,
+): CommentViewer => {
+  if (!user) return null;
+
+  return {
+    id: user.id,
+    name: user.name || user.email || "User",
+    image: user.image ?? "",
+    level: levelMap.get(user.id) ?? 1,
+  };
+};
+
 export const getMangaComments = async (
   comicSlug: string,
-): Promise<CommentFeedItem[]> => {
+): Promise<CommentFeedResponse> => {
   const normalizedSlug = comicSlug.trim();
-  if (!normalizedSlug) return [];
+  if (!normalizedSlug) return { viewer: null, comments: [] };
   const user = await getSessionUser();
 
   await connectToDatabase();
@@ -220,20 +239,28 @@ export const getMangaComments = async (
     user?.id,
     docs.map((doc: any) => String(doc._id)),
   );
-  const levelMap = await getUserLevelMap(docs.map((doc: any) => doc.userId));
+  const levelMap = await getUserLevelMap([
+    ...docs.map((doc: any) => doc.userId),
+    user?.id || "",
+  ]);
 
-  return docs.map((doc: any) =>
-    toFeedItem(doc, user?.id, likedCommentIds, levelMap),
-  );
+  return {
+    viewer: toCommentViewer(user, levelMap),
+    comments: docs.map((doc: any) =>
+      toFeedItem(doc, user?.id, likedCommentIds, levelMap),
+    ),
+  };
 };
 
 export const getChapterComments = async (
   comicSlug: string,
   chapterName: string,
-): Promise<CommentFeedItem[]> => {
+): Promise<CommentFeedResponse> => {
   const normalizedSlug = comicSlug.trim();
   const normalizedChapter = chapterName.trim();
-  if (!normalizedSlug || !normalizedChapter) return [];
+  if (!normalizedSlug || !normalizedChapter) {
+    return { viewer: null, comments: [] };
+  }
   const user = await getSessionUser();
 
   await connectToDatabase();
@@ -246,11 +273,17 @@ export const getChapterComments = async (
     user?.id,
     docs.map((doc: any) => String(doc._id)),
   );
-  const levelMap = await getUserLevelMap(docs.map((doc: any) => doc.userId));
+  const levelMap = await getUserLevelMap([
+    ...docs.map((doc: any) => doc.userId),
+    user?.id || "",
+  ]);
 
-  return docs.map((doc: any) =>
-    toFeedItem(doc, user?.id, likedCommentIds, levelMap),
-  );
+  return {
+    viewer: toCommentViewer(user, levelMap),
+    comments: docs.map((doc: any) =>
+      toFeedItem(doc, user?.id, likedCommentIds, levelMap),
+    ),
+  };
 };
 
 export const getRecentTopLevelComments = async (

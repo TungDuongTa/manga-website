@@ -18,8 +18,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { toggleMangaBookmark } from "@/lib/actions/bookmark.actions";
-import { trackMangaChapterView } from "@/lib/actions/manga-view.actions";
-import { markChapterAsReadProgress } from "@/lib/actions/reading-progress.actions";
+import { recordChapterVisit } from "@/lib/actions/reading-progress.actions";
 import { compareChapterNames } from "@/lib/chapter-utils";
 import {
   type ChapterImage,
@@ -102,33 +101,23 @@ export function ChapterReaderPageClient({
     sessionStorage.setItem(`chapter-visit:${visitKey}`, String(now));
     inFlightVisitKeysRef.current.add(visitKey);
 
-    const recordChapterVisit = async () => {
-      const [viewResult, markResult] = await Promise.allSettled([
-        trackMangaChapterView({
-          comicId: comic._id,
-          comicSlug: comic.slug,
-          comicName: comic.name,
-          thumbUrl: comic.thumb_url,
-          status: comic.status,
-          comicUpdatedAt: comic.updatedAt,
-          categories: comic.category || [],
-          chapterName: chapter,
-        }),
-        markChapterAsReadProgress({
-          comicId: comic._id,
-          comicSlug: comic.slug,
-          chapterName: chapter,
-        }),
-      ]);
+    const recordVisit = async () => {
+      const result = await recordChapterVisit({
+        comicId: comic._id,
+        comicSlug: comic.slug,
+        comicName: comic.name,
+        thumbUrl: comic.thumb_url,
+        status: comic.status,
+        comicUpdatedAt: comic.updatedAt,
+        categories: comic.category || [],
+        chapterName: chapter,
+      });
 
-      if (
-        viewResult.status === "rejected" ||
-        (viewResult.status === "fulfilled" && !viewResult.value.success)
-      ) {
+      if (!result.success) {
         console.error("Failed to track manga view:", comic.slug);
       }
 
-      if (markResult.status === "fulfilled" && markResult.value.success) {
+      if (result.progressUpdated) {
         setReadChapterNames((prev) =>
           prev.includes(chapter) ? prev : [chapter, ...prev],
         );
@@ -137,7 +126,7 @@ export function ChapterReaderPageClient({
       inFlightVisitKeysRef.current.delete(visitKey);
     };
 
-    void recordChapterVisit();
+    void recordVisit();
   }, [chapter, comic._id, comic.slug, currentChapterInfo]);
 
   useEffect(() => {
