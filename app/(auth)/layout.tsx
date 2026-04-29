@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
-import { ThemeProvider } from "@/components/theme-provider";
 import "@/app/globals.css";
-import ProgressBar from "@/components/ProgressBar";
-import { auth } from "@/lib/better-auth/auth";
-import { headers } from "next/headers";
+import { getSessionUser } from "@/lib/server-session";
 import { redirect } from "next/navigation";
 
 export default async function Layout({
@@ -13,10 +7,8 @@ export default async function Layout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (session?.user) {
+  const sessionUser = await getSessionUser();
+  if (sessionUser) {
     redirect("/");
   }
   return (
