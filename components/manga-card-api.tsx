@@ -25,7 +25,9 @@ export function MangaCardApi({
   const coverSrc = comic.thumb_url?.trim()
     ? getImageUrl(comic.thumb_url)
     : FALLBACK_COVER;
-  const latestChapterName = String(comic.chaptersLatest?.[0]?.chapter_name || "").trim();
+  const latestChapterName = String(
+    comic.chaptersLatest?.[0]?.chapter_name || "",
+  ).trim();
 
   if (variant === "horizontal") {
     return (
@@ -53,7 +55,9 @@ export function MangaCardApi({
             {showLatestChapter && (
               <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {latestChapterName ? `Chapter ${latestChapterName}` : "coming soon"}
+                {latestChapterName
+                  ? `Chapter ${latestChapterName}`
+                  : "coming soon"}
               </p>
             )}
           </div>
@@ -71,7 +75,6 @@ export function MangaCardApi({
             alt={comic.name}
             fill
             className="object-cover transition-transform group-hover:scale-105"
-            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-2">
