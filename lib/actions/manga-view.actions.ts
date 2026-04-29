@@ -3,17 +3,16 @@
 import { connectToDatabase } from "@/database/mongoose";
 import { MangaViewModel } from "@/database/models/manga-view.model";
 import { MangaViewStatModel } from "@/database/models/manga-view-stat.model";
-import type { Category, OTruyenComic } from "@/types/otruyen-types";
+import type { OTruyenComic } from "@/types/otruyen-types";
 
 type TrackMangaChapterViewInput = {
   comicId?: string;
   comicSlug: string;
   comicName?: string;
   thumbUrl?: string;
-  status?: string;
   comicUpdatedAt?: string;
-  categories?: Category[];
   chapterName: string;
+  latestChapterName?: string;
 };
 
 type TrackMangaChapterViewResult = {
@@ -60,13 +59,6 @@ const getUtcDayStart = (date: Date): Date =>
 const addUtcDays = (date: Date, days: number): Date =>
   new Date(date.getTime() + days * ONE_DAY_MS);
 
-const toStoredCategories = (categories: Category[] = []) =>
-  categories.map((category) => ({
-    id: category.id || "",
-    name: category.name,
-    slug: category.slug,
-  }));
-
 const toRankingItem = (
   doc: any,
   periodViews: number,
@@ -80,17 +72,17 @@ const toRankingItem = (
     name: doc.comicName || comicSlug,
     slug: comicSlug,
     origin_name: [],
-    status: doc.status || "ongoing",
+    status: "ongoing",
     thumb_url: doc.thumbUrl || "",
     sub_docquyen: false,
-    category: Array.isArray(doc.categories) ? doc.categories : [],
+    category: [],
     updatedAt:
       doc.comicUpdatedAt ||
       new Date(doc.updatedAt || doc.createdAt || Date.now()).toISOString(),
     chaptersLatest: [],
     latestChapterName:
       latestChapterMap?.get(comicSlug) ||
-      String(doc.lastViewedChapterName || "").trim() ||
+      String(doc.latestChapterName || "").trim() ||
       null,
     totalViews,
     periodViews: Number(periodViews || 0),
@@ -199,7 +191,7 @@ const toLatestChapterMap = (rows: any[] = []): Map<string, string> =>
     rows
       .map((row: any) => [
         String(row?.comicSlug || "").trim(),
-        String(row?.lastViewedChapterName || "").trim(),
+        String(row?.latestChapterName || "").trim(),
       ] as const)
       .filter(([comicSlug, chapterName]) => Boolean(comicSlug && chapterName)),
   );
@@ -219,25 +211,29 @@ export const trackMangaChapterView = async (
 
     const now = new Date();
     const dayBucket = getUtcDayStart(now);
-    const categories = toStoredCategories(input.categories || []);
     const metadata = {
       comicId: input.comicId || "",
       comicSlug,
       comicName: input.comicName || "",
       thumbUrl: input.thumbUrl || "",
-      status: input.status || "",
       comicUpdatedAt: input.comicUpdatedAt || "",
-      categories,
     };
+    const normalizedLatestChapterName = String(
+      input.latestChapterName || "",
+    ).trim();
+    const mutableFields: Record<string, any> = {
+      ...metadata,
+    };
+
+    if (normalizedLatestChapterName) {
+      mutableFields.latestChapterName = normalizedLatestChapterName;
+    }
 
     await Promise.all([
       MangaViewModel.updateOne(
         { comicSlug, dayBucket },
         {
-          $set: {
-            ...metadata,
-            lastViewedChapterName: chapterName,
-          },
+          $set: mutableFields,
           $inc: { views: 1 },
           $max: { lastViewedAt: now },
         },
@@ -246,10 +242,7 @@ export const trackMangaChapterView = async (
       MangaViewStatModel.updateOne(
         { comicSlug },
         {
-          $set: {
-            ...metadata,
-            lastViewedChapterName: chapterName,
-          },
+          $set: mutableFields,
           $inc: { totalViews: 1 },
           $max: { lastViewedAt: now },
         },
