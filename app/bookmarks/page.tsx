@@ -10,7 +10,7 @@ import { MangaCardApi } from "@/components/manga-card-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getVisiblePages } from "@/lib/pagination";
+import { getVisiblePages, toPositiveInt } from "@/lib/pagination";
 import { formatShortDate } from "@/lib/date-time";
 import {
   getCurrentUserBookmarksPage,
@@ -20,12 +20,6 @@ import { getCurrentUserReadingHistoryPage } from "@/lib/actions/reading-progress
 import { getSessionUser } from "@/lib/server-session";
 
 const ITEMS_PER_PAGE = 24;
-
-const parsePageParam = (value: string | undefined): number => {
-  const parsed = Number.parseInt(value || "1", 10);
-  if (!Number.isFinite(parsed) || parsed < 1) return 1;
-  return parsed;
-};
 
 interface BookmarksPageProps {
   searchParams: Promise<{
@@ -62,8 +56,8 @@ export default async function BookmarksPage({
     );
   }
 
-  const requestedBookmarkPage = parsePageParam(params.bookmarkPage);
-  const requestedHistoryPage = parsePageParam(params.historyPage);
+  const requestedBookmarkPage = toPositiveInt(params.bookmarkPage, 1);
+  const requestedHistoryPage = toPositiveInt(params.historyPage, 1);
 
   const [bookmarkResult, historyResult] = await Promise.all([
     getCurrentUserBookmarksPage({

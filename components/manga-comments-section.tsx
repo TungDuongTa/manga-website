@@ -28,6 +28,7 @@ import {
   getLevelBadgeTier,
   getLevelUsernameEffect,
 } from "@/lib/level-badge-tiers";
+import { getVisiblePages } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -195,6 +196,11 @@ export function MangaCommentsSection({
     }
     return result;
   }, [childrenByParentId, comments]);
+
+  const visiblePages = useMemo(
+    () => getVisiblePages(currentPage, pagination.totalPages, 5),
+    [currentPage, pagination.totalPages],
+  );
 
   const loadComments = useCallback(async (requestedPage: number) => {
     if (!comicSlug) {
@@ -852,23 +858,36 @@ export function MangaCommentsSection({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="icon"
               disabled={!pagination.hasPrevPage || isLoading}
               onClick={() => handlePageChange(currentPage - 1)}
-              className="gap-1.5"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              Previous
             </Button>
+            <div className="flex items-center gap-1">
+              {visiblePages.map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  type="button"
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="icon"
+                  disabled={isLoading}
+                  onClick={() => handlePageChange(pageNum)}
+                  aria-label={`Go to page ${pageNum}`}
+                >
+                  {pageNum}
+                </Button>
+              ))}
+            </div>
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size="icon"
               disabled={!pagination.hasNextPage || isLoading}
               onClick={() => handlePageChange(currentPage + 1)}
-              className="gap-1.5"
+              aria-label="Next page"
             >
-              Next
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { BookmarkModel } from "@/database/models/bookmark.model";
 import { connectToDatabase } from "@/database/mongoose";
+import { normalizePageAndSize } from "@/lib/pagination";
 import { getCurrentUserId } from "@/lib/server-session";
 import type { Category, OTruyenComic } from "@/types/otruyen-types";
 
@@ -64,19 +65,12 @@ const toBookmarkedComic = (doc: any): BookmarkedComic => ({
   bookmarkedAt: new Date(doc.createdAt || Date.now()).toISOString(),
 });
 
-const toPositiveInt = (value: unknown, fallback: number) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
-  const normalized = Math.floor(numeric);
-  if (normalized <= 0) return fallback;
-  return normalized;
-};
-
 const normalizeBookmarksPagination = (page: number, pageSize: number) => ({
-  page: toPositiveInt(page, 1),
-  pageSize: Math.min(
+  ...normalizePageAndSize(
+    page,
+    pageSize,
+    DEFAULT_BOOKMARKS_PAGE_SIZE,
     MAX_BOOKMARKS_PAGE_SIZE,
-    Math.max(1, toPositiveInt(pageSize, DEFAULT_BOOKMARKS_PAGE_SIZE)),
   ),
 });
 

@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/database/mongoose";
 import { MangaViewStatModel } from "@/database/models/manga-view-stat.model";
 import { ReadingProgressModel } from "@/database/models/reading-progress.model";
 import { trackMangaChapterView } from "@/lib/actions/manga-view.actions";
+import { normalizePageAndSize } from "@/lib/pagination";
 import {
   getUserReadingExpStats,
   incrementUserReadingStatsForNewChapter,
@@ -156,19 +157,12 @@ const toReadingHistoryComic = (
   };
 };
 
-const toPositiveInt = (value: unknown, fallback: number) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
-  const normalized = Math.floor(numeric);
-  if (normalized <= 0) return fallback;
-  return normalized;
-};
-
 const normalizeHistoryPagination = (page: number, pageSize: number) => ({
-  page: toPositiveInt(page, 1),
-  pageSize: Math.min(
+  ...normalizePageAndSize(
+    page,
+    pageSize,
+    DEFAULT_READING_HISTORY_PAGE_SIZE,
     MAX_READING_HISTORY_PAGE_SIZE,
-    Math.max(1, toPositiveInt(pageSize, DEFAULT_READING_HISTORY_PAGE_SIZE)),
   ),
 });
 
