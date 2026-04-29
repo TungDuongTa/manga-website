@@ -189,10 +189,13 @@ const buildPeriodRanking = (
 const toLatestChapterMap = (rows: any[] = []): Map<string, string> =>
   new Map<string, string>(
     rows
-      .map((row: any) => [
-        String(row?.comicSlug || "").trim(),
-        String(row?.latestChapterName || "").trim(),
-      ] as const)
+      .map(
+        (row: any) =>
+          [
+            String(row?.comicSlug || "").trim(),
+            String(row?.latestChapterName || "").trim(),
+          ] as const,
+      )
       .filter(([comicSlug, chapterName]) => Boolean(comicSlug && chapterName)),
   );
 
@@ -313,8 +316,11 @@ export const getMangaRankings = async (
         .limit(safeLimit)
         .lean(),
     ]);
-    const { daily: dailyRows, weekly: weeklyRows, monthly: monthlyRows } =
-      windowRankings;
+    const {
+      daily: dailyRows,
+      weekly: weeklyRows,
+      monthly: monthlyRows,
+    } = windowRankings;
 
     const periodSlugs = Array.from(
       new Set(
@@ -324,7 +330,9 @@ export const getMangaRankings = async (
 
     const statDocs =
       periodSlugs.length > 0
-        ? await MangaViewStatModel.find({ comicSlug: { $in: periodSlugs } }).lean()
+        ? await MangaViewStatModel.find({
+            comicSlug: { $in: periodSlugs },
+          }).lean()
         : [];
     const statMap = new Map<string, any>(
       statDocs.map((doc: any) => [String(doc.comicSlug), doc]),
