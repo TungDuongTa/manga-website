@@ -109,6 +109,7 @@ export function MangaDetailPageClient({
             src={getImageUrl(comic.thumb_url)}
             alt={comic.name}
             fill
+            sizes="100vw"
             className="scale-110 object-cover blur-sm"
             unoptimized
           />
@@ -123,6 +124,7 @@ export function MangaDetailPageClient({
                   src={getImageUrl(comic.thumb_url)}
                   alt={comic.name}
                   fill
+                  sizes="(max-width: 768px) 192px, 224px"
                   className="object-cover"
                   priority
                   unoptimized

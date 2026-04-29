@@ -17,7 +17,15 @@ const FALLBACK_COVER =
 
 interface RankingSidebarApiProps {
   limit?: number;
+  initialRankings?: Record<MangaRankingPeriod, MangaRankingItem[]>;
 }
+
+const EMPTY_RANKINGS: Record<MangaRankingPeriod, MangaRankingItem[]> = {
+  daily: [],
+  weekly: [],
+  monthly: [],
+  allTime: [],
+};
 
 const getMedalClassName = (index: number) => {
   if (index === 0) return "bg-chart-3 text-background";
@@ -46,19 +54,23 @@ const formatLatestChapter = (chapterName?: string | null) => {
     : `Chapter ${normalized}`;
 };
 
-export function RankingSidebarApi({ limit = 10 }: RankingSidebarApiProps) {
+export function RankingSidebarApi({
+  limit = 10,
+  initialRankings,
+}: RankingSidebarApiProps) {
   const [activeTab, setActiveTab] = useState<MangaRankingPeriod>("daily");
   const [rankings, setRankings] = useState<
     Record<MangaRankingPeriod, MangaRankingItem[]>
-  >({
-    daily: [],
-    weekly: [],
-    monthly: [],
-    allTime: [],
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  >(initialRankings || EMPTY_RANKINGS);
+  const [isLoading, setIsLoading] = useState(!initialRankings);
 
   useEffect(() => {
+    if (initialRankings) {
+      setRankings(initialRankings);
+      setIsLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     const fetchRankings = async () => {
@@ -81,7 +93,7 @@ export function RankingSidebarApi({ limit = 10 }: RankingSidebarApiProps) {
     return () => {
       mounted = false;
     };
-  }, [limit]);
+  }, [limit, initialRankings]);
 
   const rankedComics = rankings[activeTab] || [];
 
@@ -140,6 +152,7 @@ export function RankingSidebarApi({ limit = 10 }: RankingSidebarApiProps) {
                   }
                   alt={comic.name}
                   fill
+                  sizes="40px"
                   className="object-cover"
                   unoptimized
                 />

@@ -17,7 +17,6 @@ const commentSchema = new Schema(
     parentCommentId: { type: String, default: null, index: true },
     content: { type: String, required: true, trim: true, maxlength: 1000 },
     likeCount: { type: Number, default: 0 },
-    likedBy: { type: [String], default: [] },
   },
   {
     timestamps: true,

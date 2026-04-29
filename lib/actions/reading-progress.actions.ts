@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { connectToDatabase } from "@/database/mongoose";
 import { MangaViewStatModel } from "@/database/models/manga-view-stat.model";
 import { ReadingProgressModel } from "@/database/models/reading-progress.model";
+import { trackMangaChapterView } from "@/lib/actions/manga-view.actions";
 import {
   getUserReadingExpStats,
   incrementUserReadingStatsForNewChapter,
@@ -21,6 +22,22 @@ type MarkChapterAsReadProgressInput = {
 type MarkChapterAsReadProgressResult = {
   success: boolean;
   requiresSignIn?: boolean;
+};
+
+type RecordChapterVisitInput = {
+  comicId?: string;
+  comicSlug: string;
+  comicName?: string;
+  thumbUrl?: string;
+  status?: string;
+  comicUpdatedAt?: string;
+  categories?: Category[];
+  chapterName: string;
+};
+
+type RecordChapterVisitResult = {
+  success: boolean;
+  progressUpdated: boolean;
 };
 
 export type ReadingHistoryComic = OTruyenComic & {
@@ -291,4 +308,38 @@ export const markChapterAsReadProgress = async (
   }
 
   return { success: true };
+};
+
+export const recordChapterVisit = async (
+  input: RecordChapterVisitInput,
+): Promise<RecordChapterVisitResult> => {
+  const [viewResult, progressResult] = await Promise.allSettled([
+    trackMangaChapterView({
+      comicId: input.comicId,
+      comicSlug: input.comicSlug,
+      comicName: input.comicName,
+      thumbUrl: input.thumbUrl,
+      status: input.status,
+      comicUpdatedAt: input.comicUpdatedAt,
+      categories: input.categories,
+      chapterName: input.chapterName,
+    }),
+    markChapterAsReadProgress({
+      comicId: input.comicId,
+      comicSlug: input.comicSlug,
+      chapterName: input.chapterName,
+    }),
+  ]);
+
+  const trackedView =
+    viewResult.status === "fulfilled" && Boolean(viewResult.value.success);
+  const updatedProgress =
+    progressResult.status === "fulfilled" &&
+    Boolean(progressResult.value.success) &&
+    !progressResult.value.requiresSignIn;
+
+  return {
+    success: trackedView,
+    progressUpdated: updatedProgress,
+  };
 };

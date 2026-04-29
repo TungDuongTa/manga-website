@@ -63,6 +63,7 @@ export function HeroSectionApi({ featuredComics }: HeroSectionApiProps) {
           src={getImageUrl(currentComic.thumb_url)}
           alt={currentComic.name}
           fill
+          sizes="(max-width: 768px) 100vw, 48vw"
           className="object-cover object-top"
           priority
           unoptimized
