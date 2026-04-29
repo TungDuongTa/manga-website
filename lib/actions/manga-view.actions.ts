@@ -62,10 +62,10 @@ const addUtcDays = (date: Date, days: number): Date =>
 const toRankingItem = (
   doc: any,
   periodViews: number,
-  latestChapterMap?: Map<string, string>,
 ): MangaRankingItem => {
   const totalViews = Number(doc.totalViews || 0);
   const comicSlug = String(doc.comicSlug || "");
+  const latestChapterName = String(doc.latestChapterName || "").trim();
 
   return {
     _id: doc.comicId || comicSlug,
@@ -80,10 +80,7 @@ const toRankingItem = (
       doc.comicUpdatedAt ||
       new Date(doc.updatedAt || doc.createdAt || Date.now()).toISOString(),
     chaptersLatest: [],
-    latestChapterName:
-      latestChapterMap?.get(comicSlug) ||
-      String(doc.latestChapterName || "").trim() ||
-      null,
+    latestChapterName: latestChapterName || null,
     totalViews,
     periodViews: Number(periodViews || 0),
   };
@@ -176,28 +173,14 @@ const getWindowRankings = async (
 const buildPeriodRanking = (
   rows: PeriodRankingRow[],
   statMap: Map<string, any>,
-  latestChapterMap: Map<string, string>,
 ): MangaRankingItem[] =>
   rows
     .map((row) => {
       const stat = statMap.get(row._id);
       if (!stat) return null;
-      return toRankingItem(stat, row.periodViews, latestChapterMap);
+      return toRankingItem(stat, row.periodViews);
     })
     .filter((item): item is MangaRankingItem => Boolean(item));
-
-const toLatestChapterMap = (rows: any[] = []): Map<string, string> =>
-  new Map<string, string>(
-    rows
-      .map(
-        (row: any) =>
-          [
-            String(row?.comicSlug || "").trim(),
-            String(row?.latestChapterName || "").trim(),
-          ] as const,
-      )
-      .filter(([comicSlug, chapterName]) => Boolean(comicSlug && chapterName)),
-  );
 
 export const trackMangaChapterView = async (
   input: TrackMangaChapterViewInput,
@@ -337,14 +320,13 @@ export const getMangaRankings = async (
     const statMap = new Map<string, any>(
       statDocs.map((doc: any) => [String(doc.comicSlug), doc]),
     );
-    const latestChapterMap = toLatestChapterMap([...statDocs, ...allTimeRows]);
 
     return {
-      daily: buildPeriodRanking(dailyRows, statMap, latestChapterMap),
-      weekly: buildPeriodRanking(weeklyRows, statMap, latestChapterMap),
-      monthly: buildPeriodRanking(monthlyRows, statMap, latestChapterMap),
+      daily: buildPeriodRanking(dailyRows, statMap),
+      weekly: buildPeriodRanking(weeklyRows, statMap),
+      monthly: buildPeriodRanking(monthlyRows, statMap),
       allTime: allTimeRows.map((row: any) =>
-        toRankingItem(row, Number(row.totalViews || 0), latestChapterMap),
+        toRankingItem(row, Number(row.totalViews || 0)),
       ),
     };
   } catch (error) {

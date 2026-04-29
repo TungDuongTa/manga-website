@@ -44,6 +44,14 @@ export type ReadingHistoryComic = OTruyenComic & {
   latestReadChapterName: string;
 };
 
+export type PaginatedReadingHistoryResult = {
+  items: ReadingHistoryComic[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
 type ReadingProgressDoc = {
   _id?: unknown;
   userId?: string;
@@ -63,6 +71,9 @@ type MangaViewStatDoc = {
   thumbUrl?: string;
   comicUpdatedAt?: string;
 };
+
+const DEFAULT_READING_HISTORY_PAGE_SIZE = 24;
+const MAX_READING_HISTORY_PAGE_SIZE = 60;
 
 const normalizeString = (value: unknown): string => String(value || "").trim();
 
@@ -145,6 +156,22 @@ const toReadingHistoryComic = (
   };
 };
 
+const toPositiveInt = (value: unknown, fallback: number) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  const normalized = Math.floor(numeric);
+  if (normalized <= 0) return fallback;
+  return normalized;
+};
+
+const normalizeHistoryPagination = (page: number, pageSize: number) => ({
+  page: toPositiveInt(page, 1),
+  pageSize: Math.min(
+    MAX_READING_HISTORY_PAGE_SIZE,
+    Math.max(1, toPositiveInt(pageSize, DEFAULT_READING_HISTORY_PAGE_SIZE)),
+  ),
+});
+
 export const getCurrentUserReadingExpStats =
   async (): Promise<ReadingExpStats> => {
     const userId = await getCurrentUserId();
@@ -186,26 +213,56 @@ export const getReadingProgressChapterNames = async (
   }
 };
 
-export const getCurrentUserReadingHistory = async (): Promise<
-  ReadingHistoryComic[]
-> => {
+export const getCurrentUserReadingHistoryPage = async ({
+  page = 1,
+  pageSize = DEFAULT_READING_HISTORY_PAGE_SIZE,
+}: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<PaginatedReadingHistoryResult> => {
   try {
     const userId = await getCurrentUserId();
-    if (!userId) return [];
+    const normalized = normalizeHistoryPagination(page, pageSize);
+
+    if (!userId) {
+      return {
+        items: [],
+        page: normalized.page,
+        pageSize: normalized.pageSize,
+        totalItems: 0,
+        totalPages: 1,
+      };
+    }
 
     await connectToDatabase();
-    const rows = (await ReadingProgressModel.find({
+
+    const filter = {
       userId,
       readChapters: { $exists: true },
-    })
+    };
+
+    const totalItems = await ReadingProgressModel.countDocuments(filter);
+    const totalPages = Math.max(1, Math.ceil(totalItems / normalized.pageSize));
+    const safePage = Math.min(normalized.page, totalPages);
+    const skip = (safePage - 1) * normalized.pageSize;
+
+    const rows = (await ReadingProgressModel.find(filter)
       .sort({ lastReadAt: -1, updatedAt: -1 })
+      .skip(skip)
+      .limit(normalized.pageSize)
       .select(
         "comicId comicSlug readChapters lastReadChapter lastReadAt createdAt updatedAt",
       )
       .lean()) as ReadingProgressDoc[];
 
     if (!rows.length) {
-      return [];
+      return {
+        items: [],
+        page: safePage,
+        pageSize: normalized.pageSize,
+        totalItems,
+        totalPages,
+      };
     }
 
     const slugs = Array.from(
@@ -217,25 +274,36 @@ export const getCurrentUserReadingHistory = async (): Promise<
     const viewStatRows = await MangaViewStatModel.find({
       comicSlug: { $in: slugs },
     })
-      .select(
-        "comicId comicSlug comicName thumbUrl status comicUpdatedAt categories",
-      )
+      .select("comicId comicSlug comicName thumbUrl comicUpdatedAt")
       .lean();
 
     const viewStatMap = new Map<string, MangaViewStatDoc>(
       viewStatRows.map((row: any) => [normalizeString(row.comicSlug), row]),
     );
 
-    return rows
+    const items = rows
       .map((row) => {
         const slug = normalizeString(row.comicSlug);
         return toReadingHistoryComic(row, viewStatMap.get(slug));
       })
-      .filter((item): item is ReadingHistoryComic => Boolean(item))
-      .sort((a, b) => (a.latestReadAt < b.latestReadAt ? 1 : -1));
+      .filter((item): item is ReadingHistoryComic => Boolean(item));
+
+    return {
+      items,
+      page: safePage,
+      pageSize: normalized.pageSize,
+      totalItems,
+      totalPages,
+    };
   } catch (error) {
     console.error("Failed to load reading history:", error);
-    return [];
+    return {
+      items: [],
+      page: 1,
+      pageSize: DEFAULT_READING_HISTORY_PAGE_SIZE,
+      totalItems: 0,
+      totalPages: 1,
+    };
   }
 };
 

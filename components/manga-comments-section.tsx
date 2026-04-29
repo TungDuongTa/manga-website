@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ChevronLeft,
+  ChevronRight,
   CornerDownRight,
   Loader2,
   LogIn,
@@ -18,6 +20,7 @@ import {
   getMangaComments,
   toggleCommentLike,
   type CommentFeedItem,
+  type CommentFeedPagination,
   type CommentViewer,
 } from "@/lib/actions/comment.actions";
 import { formatRelativeTime } from "@/lib/date-time";
@@ -36,6 +39,17 @@ type MangaCommentsSectionProps = {
   comicName: string;
   chapterName?: string;
   className?: string;
+};
+
+const COMMENTS_PAGE_SIZE = 10;
+
+const EMPTY_PAGINATION: CommentFeedPagination = {
+  page: 1,
+  pageSize: COMMENTS_PAGE_SIZE,
+  totalItems: 0,
+  totalPages: 1,
+  hasNextPage: false,
+  hasPrevPage: false,
 };
 
 const getViewerInitial = (viewer: CommentViewer) => {
@@ -87,6 +101,9 @@ export function MangaCommentsSection({
   const router = useRouter();
   const [viewer, setViewer] = useState<CommentViewer>(null);
   const [comments, setComments] = useState<CommentFeedItem[]>([]);
+  const [pagination, setPagination] =
+    useState<CommentFeedPagination>(EMPTY_PAGINATION);
+  const [currentPage, setCurrentPage] = useState(1);
   const [newComment, setNewComment] = useState("");
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
@@ -179,10 +196,11 @@ export function MangaCommentsSection({
     return result;
   }, [childrenByParentId, comments]);
 
-  const loadComments = useCallback(async () => {
+  const loadComments = useCallback(async (requestedPage: number) => {
     if (!comicSlug) {
       setComments([]);
       setViewer(null);
+      setPagination(EMPTY_PAGINATION);
       setIsLoading(false);
       return;
     }
@@ -191,11 +209,24 @@ export function MangaCommentsSection({
     try {
       const feedData =
         isChapterScope && chapterName
-          ? await getChapterComments(comicSlug, chapterName)
-          : await getMangaComments(comicSlug);
+          ? await getChapterComments(
+              comicSlug,
+              chapterName,
+              requestedPage,
+              COMMENTS_PAGE_SIZE,
+            )
+          : await getMangaComments(
+              comicSlug,
+              requestedPage,
+              COMMENTS_PAGE_SIZE,
+            );
 
       setViewer(feedData.viewer);
       setComments(feedData.comments.map(normalizeComment));
+      setPagination(feedData.pagination);
+      if (feedData.pagination.page !== requestedPage) {
+        setCurrentPage(feedData.pagination.page);
+      }
     } catch (error) {
       console.error("Failed to load comments:", error);
       toast.error("Could not load comments right now.");
@@ -205,8 +236,16 @@ export function MangaCommentsSection({
   }, [chapterName, comicSlug, isChapterScope]);
 
   useEffect(() => {
-    loadComments();
-  }, [loadComments]);
+    setCurrentPage(1);
+    setExpandedThreads(new Set());
+    setCollapsedReplyThreads(new Set());
+    setActiveReplyId(null);
+    setReplyDrafts({});
+  }, [chapterName, comicSlug, isChapterScope]);
+
+  useEffect(() => {
+    loadComments(currentPage);
+  }, [currentPage, loadComments]);
 
   const setThreadExpanded = (rootId: string, expanded: boolean) => {
     setExpandedThreads((prev) => {
@@ -273,14 +312,8 @@ export function MangaCommentsSection({
       }
 
       setNewComment("");
-      if (result.comment) {
-        setComments((prev) => [
-          normalizeComment(result.comment as CommentFeedItem),
-          ...prev,
-        ]);
-      } else {
-        await loadComments();
-      }
+      setCurrentPage(1);
+      await loadComments(1);
       toast.success(result.message);
     } catch (error) {
       console.error("Failed to post comment:", error);
@@ -332,7 +365,7 @@ export function MangaCommentsSection({
           : { ...normalizedReply, parentCommentId: targetComment.id };
         setComments((prev) => [...prev, safeReply]);
       } else {
-        await loadComments();
+        await loadComments(currentPage);
       }
       toast.success(result.message);
     } catch (error) {
@@ -428,6 +461,16 @@ export function MangaCommentsSection({
         return next;
       });
     }
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    if (nextPage < 1 || nextPage > pagination.totalPages) return;
+    if (nextPage === currentPage) return;
+    setExpandedThreads(new Set());
+    setCollapsedReplyThreads(new Set());
+    setActiveReplyId(null);
+    setReplyDrafts({});
+    setCurrentPage(nextPage);
   };
 
   const renderReplyComposer = (
@@ -658,7 +701,8 @@ export function MangaCommentsSection({
           </p>
         </div>
         <Badge variant="outline" className="border-primary/40 text-primary">
-          {comments.length} {comments.length === 1 ? "comment" : "comments"}
+          {pagination.totalItems}{" "}
+          {pagination.totalItems === 1 ? "thread" : "threads"}
         </Badge>
       </div>
 
@@ -798,6 +842,38 @@ export function MangaCommentsSection({
           </div>
         )}
       </div>
+
+      {pagination.totalPages > 1 && (
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-border/50 pt-4">
+          <p className="text-xs text-muted-foreground">
+            Page {pagination.page} of {pagination.totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!pagination.hasPrevPage || isLoading}
+              onClick={() => handlePageChange(currentPage - 1)}
+              className="gap-1.5"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Previous
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!pagination.hasNextPage || isLoading}
+              onClick={() => handlePageChange(currentPage + 1)}
+              className="gap-1.5"
+            >
+              Next
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

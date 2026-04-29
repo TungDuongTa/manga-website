@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import {
   Bookmark,
   ChevronLeft,
@@ -11,22 +10,21 @@ import { MangaCardApi } from "@/components/manga-card-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { auth } from "@/lib/better-auth/auth";
 import { getVisiblePages } from "@/lib/pagination";
 import { formatShortDate } from "@/lib/date-time";
 import {
-  getCurrentUserBookmarks,
+  getCurrentUserBookmarksPage,
   removeMangaBookmark,
 } from "@/lib/actions/bookmark.actions";
-import { getCurrentUserReadingHistory } from "@/lib/actions/reading-progress.actions";
+import { getCurrentUserReadingHistoryPage } from "@/lib/actions/reading-progress.actions";
 import { getSessionUser } from "@/lib/server-session";
 
 const ITEMS_PER_PAGE = 24;
 
-const normalizePage = (value: string | undefined, totalPages: number) => {
+const parsePageParam = (value: string | undefined): number => {
   const parsed = Number.parseInt(value || "1", 10);
   if (!Number.isFinite(parsed) || parsed < 1) return 1;
-  return Math.min(parsed, totalPages);
+  return parsed;
 };
 
 interface BookmarksPageProps {
@@ -64,36 +62,31 @@ export default async function BookmarksPage({
     );
   }
 
-  const [bookmarkedManga, readingHistory] = await Promise.all([
-    getCurrentUserBookmarks(),
-    getCurrentUserReadingHistory(),
+  const requestedBookmarkPage = parsePageParam(params.bookmarkPage);
+  const requestedHistoryPage = parsePageParam(params.historyPage);
+
+  const [bookmarkResult, historyResult] = await Promise.all([
+    getCurrentUserBookmarksPage({
+      page: requestedBookmarkPage,
+      pageSize: ITEMS_PER_PAGE,
+    }),
+    getCurrentUserReadingHistoryPage({
+      page: requestedHistoryPage,
+      pageSize: ITEMS_PER_PAGE,
+    }),
   ]);
 
-  const bookmarksTotalPages = Math.max(
-    1,
-    Math.ceil(bookmarkedManga.length / ITEMS_PER_PAGE),
-  );
-  const historyTotalPages = Math.max(
-    1,
-    Math.ceil(readingHistory.length / ITEMS_PER_PAGE),
-  );
-
-  const bookmarkPage = normalizePage(params.bookmarkPage, bookmarksTotalPages);
-  const historyPage = normalizePage(params.historyPage, historyTotalPages);
-
-  const paginatedBookmarks = bookmarkedManga.slice(
-    (bookmarkPage - 1) * ITEMS_PER_PAGE,
-    bookmarkPage * ITEMS_PER_PAGE,
-  );
-  const paginatedHistory = readingHistory.slice(
-    (historyPage - 1) * ITEMS_PER_PAGE,
-    historyPage * ITEMS_PER_PAGE,
-  );
+  const bookmarkedManga = bookmarkResult.items;
+  const readingHistory = historyResult.items;
+  const bookmarkPage = bookmarkResult.page;
+  const historyPage = historyResult.page;
+  const bookmarksTotalPages = bookmarkResult.totalPages;
+  const historyTotalPages = historyResult.totalPages;
 
   const defaultTab =
     params.tab === "bookmarks" || params.tab === "history"
       ? params.tab
-      : bookmarkedManga.length > 0
+      : bookmarkResult.totalItems > 0
         ? "bookmarks"
         : "history";
 
@@ -130,20 +123,20 @@ export default async function BookmarksPage({
           <TabsList className="w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap mb-8">
             <TabsTrigger value="bookmarks" className="gap-2">
               <Bookmark className="h-4 w-4" />
-              Bookmarks ({bookmarkedManga.length})
+              Bookmarks ({bookmarkResult.totalItems})
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <Clock3 className="h-4 w-4" />
-              Reading History ({readingHistory.length})
+              Reading History ({historyResult.totalItems})
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="bookmarks">
-            {bookmarkedManga.length > 0 ? (
+            {bookmarkResult.totalItems > 0 ? (
               <>
                 <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
                   <Badge className="bg-accent text-accent-foreground">
-                    {bookmarkedManga.length} saved
+                    {bookmarkResult.totalItems} saved
                   </Badge>
                   <p className="text-sm text-muted-foreground">
                     Page {bookmarkPage} of {bookmarksTotalPages}
@@ -151,7 +144,7 @@ export default async function BookmarksPage({
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                  {paginatedBookmarks.map((manga) => {
+                  {bookmarkedManga.map((manga) => {
                     const removeAction = removeMangaBookmark.bind(
                       null,
                       manga.slug,
@@ -262,11 +255,11 @@ export default async function BookmarksPage({
           </TabsContent>
 
           <TabsContent value="history">
-            {readingHistory.length > 0 ? (
+            {historyResult.totalItems > 0 ? (
               <>
                 <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
                   <Badge className="bg-accent text-accent-foreground">
-                    {readingHistory.length} manga in history
+                    {historyResult.totalItems} manga in history
                   </Badge>
                   <p className="text-sm text-muted-foreground">
                     Page {historyPage} of {historyTotalPages}
@@ -274,7 +267,7 @@ export default async function BookmarksPage({
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                  {paginatedHistory.map((manga) => (
+                  {readingHistory.map((manga) => (
                     <div key={manga.slug}>
                       <MangaCardApi comic={manga} />
                       <p className="mt-2 text-xs text-muted-foreground">
