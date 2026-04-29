@@ -19,6 +19,7 @@ import {
   removeMangaBookmark,
 } from "@/lib/actions/bookmark.actions";
 import { getCurrentUserReadingHistory } from "@/lib/actions/reading-progress.actions";
+import { getSessionUser } from "@/lib/server-session";
 
 const ITEMS_PER_PAGE = 24;
 
@@ -40,11 +41,9 @@ export default async function BookmarksPage({
   searchParams,
 }: BookmarksPageProps) {
   const params = await searchParams;
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const sessionUser = await getSessionUser();
 
-  if (!session?.user) {
+  if (!sessionUser) {
     return (
       <div className="min-h-screen">
         <main className="mx-auto max-w-4xl px-4 py-16">

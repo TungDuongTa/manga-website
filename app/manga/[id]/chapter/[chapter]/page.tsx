@@ -20,7 +20,10 @@ export default async function ChapterReaderPage({
 
   const detailData =
     detailResult.status === "fulfilled" ? detailResult.value : null;
-
+  const initialBookmarked =
+    bookmarkResult.status === "fulfilled" ? bookmarkResult.value : false;
+  const initialReadChapterNames =
+    readResult.status === "fulfilled" ? readResult.value : [];
   if (!detailData?.item) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center">
@@ -36,7 +39,9 @@ export default async function ChapterReaderPage({
 
   const comic = detailData.item;
   const allChapters = comic.chapters?.[0]?.server_data || [];
-  const currentChapterData = allChapters.find((c) => c.chapter_name === chapter);
+  const currentChapterData = allChapters.find(
+    (c) => c.chapter_name === chapter,
+  );
 
   if (!currentChapterData?.chapter_api_data) {
     return (
@@ -51,7 +56,9 @@ export default async function ChapterReaderPage({
     );
   }
 
-  const chapterContent = await getChapterData(currentChapterData.chapter_api_data);
+  const chapterContent = await getChapterData(
+    currentChapterData.chapter_api_data,
+  );
   const chapterImages = chapterContent?.item?.chapter_image || [];
   const chapterPath = chapterContent?.item?.chapter_path || "";
 
@@ -67,11 +74,6 @@ export default async function ChapterReaderPage({
       </div>
     );
   }
-
-  const initialBookmarked =
-    bookmarkResult.status === "fulfilled" ? bookmarkResult.value : false;
-  const initialReadChapterNames =
-    readResult.status === "fulfilled" ? readResult.value : [];
 
   return (
     <ChapterReaderPageClient
