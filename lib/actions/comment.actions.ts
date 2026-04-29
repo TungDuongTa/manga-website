@@ -5,6 +5,7 @@ import { Types } from "mongoose";
 import { connectToDatabase } from "@/database/mongoose";
 import { CommentLikeModel } from "@/database/models/comment-like.model";
 import { CommentModel } from "@/database/models/comment.model";
+import { normalizePageAndSize } from "@/lib/pagination";
 import { getUserLevelMap } from "@/lib/server/user-level";
 import { getSessionUser } from "@/lib/server-session";
 
@@ -104,27 +105,20 @@ const isDuplicateKeyError = (error: unknown) => {
   return maybeCode === 11000;
 };
 
-const toPositiveInt = (value: unknown, fallback: number) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return fallback;
-  const normalized = Math.floor(numeric);
-  if (normalized <= 0) return fallback;
-  return normalized;
-};
-
 const normalizeCommentPagination = (
   page: number,
   pageSize: number,
 ): { page: number; pageSize: number } => {
-  const normalizedPage = toPositiveInt(page, 1);
-  const normalizedPageSize = Math.min(
+  const normalized = normalizePageAndSize(
+    page,
+    pageSize,
+    DEFAULT_COMMENT_PAGE_SIZE,
     MAX_COMMENT_PAGE_SIZE,
-    Math.max(1, toPositiveInt(pageSize, DEFAULT_COMMENT_PAGE_SIZE)),
   );
 
   return {
-    page: normalizedPage,
-    pageSize: normalizedPageSize,
+    page: normalized.page,
+    pageSize: normalized.pageSize,
   };
 };
 
