@@ -77,11 +77,9 @@ const resolveHistoryMetadata = (
   viewStat?: MangaViewStatDoc,
 ) => {
   const comicId = normalizeString(viewStat?.comicId);
-  const name =
-    normalizeString(viewStat?.comicName) || comicSlug;
+  const name = normalizeString(viewStat?.comicName) || comicSlug;
   const thumbUrl = normalizeString(viewStat?.thumbUrl);
-  const status =
-    normalizeString(viewStat?.status) || "ongoing";
+  const status = normalizeString(viewStat?.status) || "ongoing";
   const comicUpdatedAt = normalizeString(viewStat?.comicUpdatedAt);
   const categories = Array.isArray(viewStat?.categories)
     ? viewStat.categories
@@ -107,7 +105,11 @@ const toReadingHistoryComic = (
   const readChapters = uniqueChapterNames(doc.readChapters);
   const latestReadChapterName =
     normalizeString(doc.lastReadChapter) || readChapters[0] || "";
-  const latestReadAt = toIsoDateString(doc.lastReadAt, doc.updatedAt, doc.createdAt);
+  const latestReadAt = toIsoDateString(
+    doc.lastReadAt,
+    doc.updatedAt,
+    doc.createdAt,
+  );
   const metadata = resolveHistoryMetadata(comicSlug, viewStat);
 
   return {
@@ -189,7 +191,9 @@ export const getCurrentUserReadingHistory = async (): Promise<
       readChapters: { $exists: true },
     })
       .sort({ lastReadAt: -1, updatedAt: -1 })
-      .select("comicId comicSlug readChapters lastReadChapter lastReadAt createdAt updatedAt")
+      .select(
+        "comicId comicSlug readChapters lastReadChapter lastReadAt createdAt updatedAt",
+      )
       .lean()) as ReadingProgressDoc[];
 
     if (!rows.length) {
@@ -197,13 +201,17 @@ export const getCurrentUserReadingHistory = async (): Promise<
     }
 
     const slugs = Array.from(
-      new Set(rows.map((row) => normalizeString(row.comicSlug)).filter(Boolean)),
+      new Set(
+        rows.map((row) => normalizeString(row.comicSlug)).filter(Boolean),
+      ),
     );
 
     const viewStatRows = await MangaViewStatModel.find({
       comicSlug: { $in: slugs },
     })
-      .select("comicId comicSlug comicName thumbUrl status comicUpdatedAt categories")
+      .select(
+        "comicId comicSlug comicName thumbUrl status comicUpdatedAt categories",
+      )
       .lean();
 
     const viewStatMap = new Map<string, MangaViewStatDoc>(
@@ -277,8 +285,10 @@ export const markChapterAsReadProgress = async (
     }
   }
 
-  revalidatePath(`/manga/${comicSlug}`);
-  revalidatePath("/bookmarks");
+  if (didInsertNewRead) {
+    revalidatePath(`/manga/${comicSlug}`);
+    revalidatePath("/bookmarks");
+  }
 
   return { success: true };
 };

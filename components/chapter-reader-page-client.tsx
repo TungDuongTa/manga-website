@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -46,7 +46,9 @@ export function ChapterReaderPageClient({
   initialBookmarked,
   initialReadChapterNames,
 }: ChapterReaderPageClientProps) {
+  const VISIT_DEDUPE_WINDOW_MS = 15_000;
   const router = useRouter();
+  const inFlightVisitKeysRef = useRef<Set<string>>(new Set());
   const [showChapterList, setShowChapterList] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked);
   const [isBookmarkLoading, setIsBookmarkLoading] = useState(false);
@@ -79,6 +81,27 @@ export function ChapterReaderPageClient({
   useEffect(() => {
     if (!currentChapterInfo) return;
 
+    const visitKey = `${comic.slug}::${chapter}`;
+    if (inFlightVisitKeysRef.current.has(visitKey)) {
+      return;
+    }
+
+    const now = Date.now();
+    const previousVisitAtRaw = sessionStorage.getItem(
+      `chapter-visit:${visitKey}`,
+    );
+    const previousVisitAt = Number(previousVisitAtRaw || "0");
+    if (
+      Number.isFinite(previousVisitAt) &&
+      previousVisitAt > 0 &&
+      now - previousVisitAt < VISIT_DEDUPE_WINDOW_MS
+    ) {
+      return;
+    }
+
+    sessionStorage.setItem(`chapter-visit:${visitKey}`, String(now));
+    inFlightVisitKeysRef.current.add(visitKey);
+
     const recordChapterVisit = async () => {
       const [viewResult, markResult] = await Promise.allSettled([
         trackMangaChapterView({
@@ -110,20 +133,12 @@ export function ChapterReaderPageClient({
           prev.includes(chapter) ? prev : [chapter, ...prev],
         );
       }
+
+      inFlightVisitKeysRef.current.delete(visitKey);
     };
 
-    recordChapterVisit();
-  }, [
-    chapter,
-    comic._id,
-    comic.category,
-    comic.name,
-    comic.slug,
-    comic.status,
-    comic.thumb_url,
-    comic.updatedAt,
-    currentChapterInfo,
-  ]);
+    void recordChapterVisit();
+  }, [chapter, comic._id, comic.slug, currentChapterInfo]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -145,7 +160,9 @@ export function ChapterReaderPageClient({
       if (e.key === "ArrowLeft") {
         if (prevChapter) {
           e.preventDefault();
-          router.push(`/manga/${comicSlug}/chapter/${prevChapter.chapter_name}`);
+          router.push(
+            `/manga/${comicSlug}/chapter/${prevChapter.chapter_name}`,
+          );
         }
         return;
       }
@@ -153,7 +170,9 @@ export function ChapterReaderPageClient({
       if (e.key === "ArrowRight") {
         if (nextChapter) {
           e.preventDefault();
-          router.push(`/manga/${comicSlug}/chapter/${nextChapter.chapter_name}`);
+          router.push(
+            `/manga/${comicSlug}/chapter/${nextChapter.chapter_name}`,
+          );
         }
       }
     };
@@ -240,7 +259,9 @@ export function ChapterReaderPageClient({
 
               <div className="flex shrink-0 flex-wrap items-center justify-center gap-2">
                 {prevChapter ? (
-                  <Link href={`/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`}>
+                  <Link
+                    href={`/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`}
+                  >
                     <Button variant="outline" className="gap-2">
                       <ChevronLeft className="h-4 w-4" />
                       Previous
@@ -254,7 +275,9 @@ export function ChapterReaderPageClient({
                 )}
 
                 {nextChapter ? (
-                  <Link href={`/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`}>
+                  <Link
+                    href={`/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`}
+                  >
                     <Button variant="outline" className="gap-2">
                       Next
                       <ChevronRight className="h-4 w-4" />
@@ -290,7 +313,9 @@ export function ChapterReaderPageClient({
           <div className="rounded-xl border border-border bg-card p-4 md:p-5">
             <div className="mb-3 flex shrink-0 flex-wrap items-center justify-center gap-2">
               {prevChapter ? (
-                <Link href={`/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`}>
+                <Link
+                  href={`/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`}
+                >
                   <Button variant="outline" className="gap-2">
                     <ChevronLeft className="h-4 w-4" />
                     Previous
@@ -304,7 +329,9 @@ export function ChapterReaderPageClient({
               )}
 
               {nextChapter ? (
-                <Link href={`/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`}>
+                <Link
+                  href={`/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`}
+                >
                   <Button variant="outline" className="gap-2">
                     Next
                     <ChevronRight className="h-4 w-4" />
