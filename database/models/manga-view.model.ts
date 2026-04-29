@@ -1,27 +1,16 @@
 import { Schema, model, models } from "mongoose";
 
-const mangaViewCategorySchema = new Schema(
-  {
-    id: { type: String, default: "" },
-    name: { type: String, required: true },
-    slug: { type: String, required: true },
-  },
-  { _id: false },
-);
-
 const mangaViewSchema = new Schema(
   {
     comicId: { type: String, default: "" },
     comicSlug: { type: String, required: true, index: true },
     comicName: { type: String, default: "" },
     thumbUrl: { type: String, default: "" },
-    status: { type: String, default: "" },
     comicUpdatedAt: { type: String, default: "" },
-    categories: { type: [mangaViewCategorySchema], default: [] },
     dayBucket: { type: Date, required: true, index: true },
     views: { type: Number, default: 0 },
     lastViewedAt: { type: Date, default: null },
-    lastViewedChapterName: { type: String, default: "" },
+    latestChapterName: { type: String, default: "" },
   },
   {
     timestamps: true,

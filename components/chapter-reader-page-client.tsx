@@ -107,10 +107,9 @@ export function ChapterReaderPageClient({
         comicSlug: comic.slug,
         comicName: comic.name,
         thumbUrl: comic.thumb_url,
-        status: comic.status,
         comicUpdatedAt: comic.updatedAt,
-        categories: comic.category || [],
         chapterName: chapter,
+        latestChapterName: latestChapter?.chapter_name,
       });
 
       if (!result.success) {
@@ -127,7 +126,7 @@ export function ChapterReaderPageClient({
     };
 
     void recordVisit();
-  }, [chapter, comic._id, comic.slug, currentChapterInfo]);
+  }, [chapter, comic._id, comic.slug, currentChapterInfo, latestChapter?.chapter_name]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

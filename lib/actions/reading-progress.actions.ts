@@ -11,7 +11,7 @@ import {
 } from "@/lib/server/user-level";
 import { getCurrentUserId } from "@/lib/server-session";
 import type { ReadingExpStats } from "@/lib/user-level";
-import type { Category, OTruyenComic } from "@/types/otruyen-types";
+import type { OTruyenComic } from "@/types/otruyen-types";
 
 type MarkChapterAsReadProgressInput = {
   comicId?: string;
@@ -29,10 +29,9 @@ type RecordChapterVisitInput = {
   comicSlug: string;
   comicName?: string;
   thumbUrl?: string;
-  status?: string;
   comicUpdatedAt?: string;
-  categories?: Category[];
   chapterName: string;
+  latestChapterName?: string;
 };
 
 type RecordChapterVisitResult = {
@@ -62,9 +61,7 @@ type MangaViewStatDoc = {
   comicSlug?: string;
   comicName?: string;
   thumbUrl?: string;
-  status?: string;
   comicUpdatedAt?: string;
-  categories?: Category[];
 };
 
 const normalizeString = (value: unknown): string => String(value || "").trim();
@@ -96,19 +93,13 @@ const resolveHistoryMetadata = (
   const comicId = normalizeString(viewStat?.comicId);
   const name = normalizeString(viewStat?.comicName) || comicSlug;
   const thumbUrl = normalizeString(viewStat?.thumbUrl);
-  const status = normalizeString(viewStat?.status) || "ongoing";
   const comicUpdatedAt = normalizeString(viewStat?.comicUpdatedAt);
-  const categories = Array.isArray(viewStat?.categories)
-    ? viewStat.categories
-    : [];
 
   return {
     comicId,
     name,
     thumbUrl,
-    status,
     comicUpdatedAt,
-    categories,
   };
 };
 
@@ -134,10 +125,10 @@ const toReadingHistoryComic = (
     name: metadata.name,
     slug: comicSlug,
     origin_name: [],
-    status: metadata.status,
+    status: "ongoing",
     thumb_url: metadata.thumbUrl,
     sub_docquyen: false,
-    category: metadata.categories,
+    category: [],
     updatedAt: metadata.comicUpdatedAt || latestReadAt,
     chaptersLatest: latestReadChapterName
       ? [
@@ -319,10 +310,9 @@ export const recordChapterVisit = async (
       comicSlug: input.comicSlug,
       comicName: input.comicName,
       thumbUrl: input.thumbUrl,
-      status: input.status,
       comicUpdatedAt: input.comicUpdatedAt,
-      categories: input.categories,
       chapterName: input.chapterName,
+      latestChapterName: input.latestChapterName,
     }),
     markChapterAsReadProgress({
       comicId: input.comicId,
