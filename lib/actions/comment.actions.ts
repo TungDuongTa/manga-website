@@ -105,23 +105,6 @@ const isDuplicateKeyError = (error: unknown) => {
   return maybeCode === 11000;
 };
 
-const normalizeCommentPagination = (
-  page: number,
-  pageSize: number,
-): { page: number; pageSize: number } => {
-  const normalized = normalizePageAndSize(
-    page,
-    pageSize,
-    DEFAULT_COMMENT_PAGE_SIZE,
-    MAX_COMMENT_PAGE_SIZE,
-  );
-
-  return {
-    page: normalized.page,
-    pageSize: normalized.pageSize,
-  };
-};
-
 const buildCommentPagination = (
   page: number,
   pageSize: number,
@@ -304,12 +287,7 @@ export const getCommentViewer = async (): Promise<CommentViewer> => {
   if (!user) return null;
   const levelMap = await getUserLevelMap([user.id]);
 
-  return {
-    id: user.id,
-    name: user.name || user.email || "User",
-    image: user.image ?? "",
-    level: levelMap.get(user.id) ?? 1,
-  };
+  return toCommentViewer(user, levelMap);
 };
 
 const toCommentViewer = (
@@ -332,7 +310,12 @@ export const getMangaComments = async (
   pageSize = DEFAULT_COMMENT_PAGE_SIZE,
 ): Promise<CommentFeedResponse> => {
   const normalizedSlug = comicSlug.trim();
-  const normalizedPagination = normalizeCommentPagination(page, pageSize);
+  const normalizedPagination = normalizePageAndSize(
+    page,
+    pageSize,
+    DEFAULT_COMMENT_PAGE_SIZE,
+    MAX_COMMENT_PAGE_SIZE,
+  );
 
   if (!normalizedSlug) {
     return {
@@ -346,7 +329,11 @@ export const getMangaComments = async (
     };
   }
 
-  return buildCommentFeed({ comicSlug: normalizedSlug }, normalizedPagination.page, normalizedPagination.pageSize);
+  return buildCommentFeed(
+    { comicSlug: normalizedSlug },
+    normalizedPagination.page,
+    normalizedPagination.pageSize,
+  );
 };
 
 export const getChapterComments = async (
@@ -357,7 +344,12 @@ export const getChapterComments = async (
 ): Promise<CommentFeedResponse> => {
   const normalizedSlug = comicSlug.trim();
   const normalizedChapter = chapterName.trim();
-  const normalizedPagination = normalizeCommentPagination(page, pageSize);
+  const normalizedPagination = normalizePageAndSize(
+    page,
+    pageSize,
+    DEFAULT_COMMENT_PAGE_SIZE,
+    MAX_COMMENT_PAGE_SIZE,
+  );
 
   if (!normalizedSlug || !normalizedChapter) {
     return {
@@ -479,7 +471,7 @@ export const createComment = async (
       _id: parentCommentId,
       comicSlug,
     })
-      .select("_id comicSlug comicName targetType chapterName parentCommentId")
+      .select("_id comicName targetType chapterName")
       .lean();
 
     if (!parent) {
@@ -519,22 +511,7 @@ export const createComment = async (
     content,
     likeCount: 0,
   });
-
-  // Safety write: if a stale dev-cached schema is active, create() can drop
-  // unknown paths. Force parentCommentId into storage with strict: false.
-  if (normalizedParentCommentId) {
-    await CommentModel.updateOne(
-      { _id: created._id },
-      { $set: { parentCommentId: normalizedParentCommentId } },
-      { strict: false },
-    );
-  }
-
-  const createdFromDb = await CommentModel.findById(created._id)
-    .select(COMMENT_PROJECTION)
-    .lean();
   const levelMap = await getUserLevelMap([user.id]);
-
   revalidatePath(`/manga/${comicSlug}`);
   revalidatePath("/");
   if (resolvedTargetType === "chapter" && resolvedChapterName) {
@@ -544,15 +521,12 @@ export const createComment = async (
   return {
     success: true,
     message: "Comment posted.",
-    comment: {
-      ...toFeedItem(
-        createdFromDb || created.toObject(),
-        user.id,
-        new Set<string>(),
-        levelMap,
-      ),
-      parentCommentId: normalizedParentCommentId,
-    },
+    comment: toFeedItem(
+      created.toObject(),
+      user.id,
+      new Set<string>(),
+      levelMap,
+    ),
   };
 };
 
