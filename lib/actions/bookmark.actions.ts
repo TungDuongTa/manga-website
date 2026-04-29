@@ -28,6 +28,17 @@ export type BookmarkedComic = OTruyenComic & {
   bookmarkedAt: string;
 };
 
+export type PaginatedBookmarksResult = {
+  items: BookmarkedComic[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
+const DEFAULT_BOOKMARKS_PAGE_SIZE = 24;
+const MAX_BOOKMARKS_PAGE_SIZE = 60;
+
 const toBookmarkedComic = (doc: any): BookmarkedComic => ({
   _id: doc.comicId || doc.slug,
   name: doc.name,
@@ -53,18 +64,62 @@ const toBookmarkedComic = (doc: any): BookmarkedComic => ({
   bookmarkedAt: new Date(doc.createdAt || Date.now()).toISOString(),
 });
 
-export const getCurrentUserBookmarks = async (): Promise<BookmarkedComic[]> => {
+const toPositiveInt = (value: unknown, fallback: number) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  const normalized = Math.floor(numeric);
+  if (normalized <= 0) return fallback;
+  return normalized;
+};
+
+const normalizeBookmarksPagination = (page: number, pageSize: number) => ({
+  page: toPositiveInt(page, 1),
+  pageSize: Math.min(
+    MAX_BOOKMARKS_PAGE_SIZE,
+    Math.max(1, toPositiveInt(pageSize, DEFAULT_BOOKMARKS_PAGE_SIZE)),
+  ),
+});
+
+export const getCurrentUserBookmarksPage = async ({
+  page = 1,
+  pageSize = DEFAULT_BOOKMARKS_PAGE_SIZE,
+}: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<PaginatedBookmarksResult> => {
   const userId = await getCurrentUserId();
+  const normalized = normalizeBookmarksPagination(page, pageSize);
+
   if (!userId) {
-    return [];
+    return {
+      items: [],
+      page: normalized.page,
+      pageSize: normalized.pageSize,
+      totalItems: 0,
+      totalPages: 1,
+    };
   }
 
   await connectToDatabase();
+
+  const totalItems = await BookmarkModel.countDocuments({ userId });
+  const totalPages = Math.max(1, Math.ceil(totalItems / normalized.pageSize));
+  const safePage = Math.min(normalized.page, totalPages);
+  const skip = (safePage - 1) * normalized.pageSize;
+
   const bookmarks = await BookmarkModel.find({ userId })
     .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(normalized.pageSize)
     .lean();
 
-  return bookmarks.map(toBookmarkedComic);
+  return {
+    items: bookmarks.map(toBookmarkedComic),
+    page: safePage,
+    pageSize: normalized.pageSize,
+    totalItems,
+    totalPages,
+  };
 };
 
 export const isMangaBookmarked = async (slug: string): Promise<boolean> => {

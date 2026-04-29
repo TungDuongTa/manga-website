@@ -31,9 +31,19 @@ export type CommentFeedItem = {
   createdAt: string;
 };
 
+export type CommentFeedPagination = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+};
+
 export type CommentFeedResponse = {
   viewer: CommentViewer;
   comments: CommentFeedItem[];
+  pagination: CommentFeedPagination;
 };
 
 export type HomeRecentCommentItem = {
@@ -76,6 +86,8 @@ type ToggleCommentLikeResult = {
 const COMMENT_MAX_LENGTH = 1000;
 const DEFAULT_RECENT_HOME_COMMENT_LIMIT = 10;
 const MAX_RECENT_HOME_COMMENT_LIMIT = 30;
+const DEFAULT_COMMENT_PAGE_SIZE = 10;
+const MAX_COMMENT_PAGE_SIZE = 30;
 const TOP_LEVEL_COMMENT_QUERY = {
   $or: [
     { parentCommentId: null },
@@ -90,6 +102,48 @@ const isDuplicateKeyError = (error: unknown) => {
   if (!error || typeof error !== "object") return false;
   const maybeCode = (error as { code?: unknown }).code;
   return maybeCode === 11000;
+};
+
+const toPositiveInt = (value: unknown, fallback: number) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  const normalized = Math.floor(numeric);
+  if (normalized <= 0) return fallback;
+  return normalized;
+};
+
+const normalizeCommentPagination = (
+  page: number,
+  pageSize: number,
+): { page: number; pageSize: number } => {
+  const normalizedPage = toPositiveInt(page, 1);
+  const normalizedPageSize = Math.min(
+    MAX_COMMENT_PAGE_SIZE,
+    Math.max(1, toPositiveInt(pageSize, DEFAULT_COMMENT_PAGE_SIZE)),
+  );
+
+  return {
+    page: normalizedPage,
+    pageSize: normalizedPageSize,
+  };
+};
+
+const buildCommentPagination = (
+  page: number,
+  pageSize: number,
+  totalItems: number,
+): CommentFeedPagination => {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+
+  return {
+    page: safePage,
+    pageSize,
+    totalItems,
+    totalPages,
+    hasNextPage: safePage < totalPages,
+    hasPrevPage: safePage > 1,
+  };
 };
 
 const getViewerLikedCommentIdSet = async (
@@ -137,66 +191,118 @@ const toFeedItem = (
   ).toISOString(),
 });
 
-const fetchCommentsWithAncestors = async (query: Record<string, unknown>) => {
-  const baseDocs = await CommentModel.find(query)
-    .select(COMMENT_PROJECTION)
-    .sort({ createdAt: -1 })
-    .lean();
+const fetchDescendantsForParents = async (
+  scopeQuery: Record<string, unknown>,
+  parentIds: string[],
+) => {
+  const normalizedParentIds = Array.from(
+    new Set(parentIds.map((id) => String(id || "").trim()).filter(Boolean)),
+  );
 
-  const byId = new Map<string, any>();
-  const missingAncestorIds = new Set<string>();
-
-  for (const doc of baseDocs) {
-    byId.set(String(doc._id), doc);
+  if (!normalizedParentIds.length) {
+    return [] as any[];
   }
 
-  for (const doc of baseDocs) {
-    const parentId = doc.parentCommentId ? String(doc.parentCommentId) : null;
-    if (parentId && !byId.has(parentId) && Types.ObjectId.isValid(parentId)) {
-      missingAncestorIds.add(parentId);
-    }
-  }
+  const descendants: any[] = [];
+  const visitedParentIds = new Set<string>();
+  let currentParentIds = normalizedParentIds;
 
-  const visited = new Set<string>();
-  while (missingAncestorIds.size > 0) {
-    const batchIds = Array.from(missingAncestorIds).filter(
-      (id) => !visited.has(id),
-    );
-    missingAncestorIds.clear();
-    if (batchIds.length === 0) break;
+  while (currentParentIds.length > 0) {
+    const batchIds = currentParentIds.filter((id) => !visitedParentIds.has(id));
+    if (!batchIds.length) break;
 
-    batchIds.forEach((id) => visited.add(id));
+    batchIds.forEach((id) => visitedParentIds.add(id));
 
-    const ancestorDocs = await CommentModel.find({
-      _id: { $in: batchIds },
-      comicSlug: query.comicSlug,
+    const rows = await CommentModel.find({
+      ...scopeQuery,
+      parentCommentId: { $in: batchIds },
     })
       .select(COMMENT_PROJECTION)
       .lean();
 
-    for (const doc of ancestorDocs) {
-      const id = String(doc._id);
-      if (!byId.has(id)) {
-        byId.set(id, doc);
-      }
+    if (!rows.length) break;
 
-      const parentId = doc.parentCommentId ? String(doc.parentCommentId) : null;
-      if (
-        parentId &&
-        !byId.has(parentId) &&
-        !visited.has(parentId) &&
-        Types.ObjectId.isValid(parentId)
-      ) {
-        missingAncestorIds.add(parentId);
-      }
-    }
+    descendants.push(...rows);
+    currentParentIds = rows.map((row: any) => String(row._id));
   }
 
-  return Array.from(byId.values()).sort(
-    (a, b) =>
-      new Date(b.createdAt || b.updatedAt || 0).getTime() -
-      new Date(a.createdAt || a.updatedAt || 0).getTime(),
+  return descendants;
+};
+
+const getPaginatedCommentDocs = async (
+  scopeQuery: Record<string, unknown>,
+  page: number,
+  pageSize: number,
+): Promise<{ docs: any[]; pagination: CommentFeedPagination }> => {
+  const topLevelQuery = {
+    ...scopeQuery,
+    ...TOP_LEVEL_COMMENT_QUERY,
+  };
+
+  const totalItems = await CommentModel.countDocuments(topLevelQuery);
+  const pagination = buildCommentPagination(page, pageSize, totalItems);
+
+  if (totalItems === 0) {
+    return {
+      docs: [],
+      pagination,
+    };
+  }
+
+  const skip = (pagination.page - 1) * pagination.pageSize;
+  const topLevelDocs = await CommentModel.find(topLevelQuery)
+    .select(COMMENT_PROJECTION)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(pagination.pageSize)
+    .lean();
+
+  const descendants = await fetchDescendantsForParents(
+    scopeQuery,
+    topLevelDocs.map((doc: any) => String(doc._id)),
   );
+
+  return {
+    docs: [...topLevelDocs, ...descendants],
+    pagination,
+  };
+};
+
+const buildCommentFeed = async (
+  scopeQuery: Record<string, unknown>,
+  page: number,
+  pageSize: number,
+): Promise<CommentFeedResponse> => {
+  const user = await getSessionUser();
+
+  await connectToDatabase();
+  const { docs, pagination } = await getPaginatedCommentDocs(
+    scopeQuery,
+    page,
+    pageSize,
+  );
+
+  const likedCommentIds = await getViewerLikedCommentIdSet(
+    user?.id,
+    docs.map((doc: any) => String(doc._id)),
+  );
+  const levelMap = await getUserLevelMap(
+    Array.from(
+      new Set(
+        [...docs.map((doc: any) => String(doc.userId || "")), user?.id || ""]
+          .map((id) => id.trim())
+          .filter(Boolean),
+      ),
+    ),
+  );
+
+  return {
+    viewer: toCommentViewer(user, levelMap),
+    comments: docs.map((doc: any) =>
+      toFeedItem(doc, user?.id, likedCommentIds, levelMap),
+    ),
+    pagination,
+  };
 };
 
 export const getCommentViewer = async (): Promise<CommentViewer> => {
@@ -228,62 +334,58 @@ const toCommentViewer = (
 
 export const getMangaComments = async (
   comicSlug: string,
+  page = 1,
+  pageSize = DEFAULT_COMMENT_PAGE_SIZE,
 ): Promise<CommentFeedResponse> => {
   const normalizedSlug = comicSlug.trim();
-  if (!normalizedSlug) return { viewer: null, comments: [] };
-  const user = await getSessionUser();
+  const normalizedPagination = normalizeCommentPagination(page, pageSize);
 
-  await connectToDatabase();
-  const docs = await fetchCommentsWithAncestors({ comicSlug: normalizedSlug });
-  const likedCommentIds = await getViewerLikedCommentIdSet(
-    user?.id,
-    docs.map((doc: any) => String(doc._id)),
-  );
-  const levelMap = await getUserLevelMap([
-    ...docs.map((doc: any) => doc.userId),
-    user?.id || "",
-  ]);
+  if (!normalizedSlug) {
+    return {
+      viewer: null,
+      comments: [],
+      pagination: buildCommentPagination(
+        normalizedPagination.page,
+        normalizedPagination.pageSize,
+        0,
+      ),
+    };
+  }
 
-  return {
-    viewer: toCommentViewer(user, levelMap),
-    comments: docs.map((doc: any) =>
-      toFeedItem(doc, user?.id, likedCommentIds, levelMap),
-    ),
-  };
+  return buildCommentFeed({ comicSlug: normalizedSlug }, normalizedPagination.page, normalizedPagination.pageSize);
 };
 
 export const getChapterComments = async (
   comicSlug: string,
   chapterName: string,
+  page = 1,
+  pageSize = DEFAULT_COMMENT_PAGE_SIZE,
 ): Promise<CommentFeedResponse> => {
   const normalizedSlug = comicSlug.trim();
   const normalizedChapter = chapterName.trim();
+  const normalizedPagination = normalizeCommentPagination(page, pageSize);
+
   if (!normalizedSlug || !normalizedChapter) {
-    return { viewer: null, comments: [] };
+    return {
+      viewer: null,
+      comments: [],
+      pagination: buildCommentPagination(
+        normalizedPagination.page,
+        normalizedPagination.pageSize,
+        0,
+      ),
+    };
   }
-  const user = await getSessionUser();
 
-  await connectToDatabase();
-  const docs = await fetchCommentsWithAncestors({
-    comicSlug: normalizedSlug,
-    targetType: "chapter",
-    chapterName: normalizedChapter,
-  });
-  const likedCommentIds = await getViewerLikedCommentIdSet(
-    user?.id,
-    docs.map((doc: any) => String(doc._id)),
+  return buildCommentFeed(
+    {
+      comicSlug: normalizedSlug,
+      targetType: "chapter",
+      chapterName: normalizedChapter,
+    },
+    normalizedPagination.page,
+    normalizedPagination.pageSize,
   );
-  const levelMap = await getUserLevelMap([
-    ...docs.map((doc: any) => doc.userId),
-    user?.id || "",
-  ]);
-
-  return {
-    viewer: toCommentViewer(user, levelMap),
-    comments: docs.map((doc: any) =>
-      toFeedItem(doc, user?.id, likedCommentIds, levelMap),
-    ),
-  };
 };
 
 export const getRecentTopLevelComments = async (
