@@ -11,6 +11,7 @@ import {
   Clock,
   Home,
   Library,
+  ShieldAlert,
   Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export function Header({ user }: HeaderProps) {
     { href: "/", label: "Home", icon: Home },
     { href: "/browse", label: "Browse", icon: Library },
     { href: "/latest", label: "Latest", icon: Clock },
+    { href: "/18+", label: "18+", icon: ShieldAlert },
     { href: "/bookmarks", label: "Bookmarks", icon: Bookmark },
     { href: "/ranking", label: "Ranking", icon: Trophy },
   ];

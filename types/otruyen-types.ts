@@ -165,6 +165,14 @@ export function getChapterImageUrl(
   chapterPath: string,
   imageFile: string,
 ): string {
+  if (imageFile.startsWith("http://") || imageFile.startsWith("https://")) {
+    return imageFile;
+  }
+
+  if (!chapterPath) {
+    return imageFile;
+  }
+
   // chapterPath is like: uploads/20260407/xxx/chapter_45
   // imageFile is like: page_0.jpg
   return `${CDN_CHAPTER_URL}/${chapterPath}/${imageFile}`;

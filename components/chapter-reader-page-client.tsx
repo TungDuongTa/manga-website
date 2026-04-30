@@ -34,6 +34,8 @@ type ChapterReaderPageClientProps = {
   chapterPath: string;
   initialBookmarked: boolean;
   initialReadChapterNames: string[];
+  routeBase?: string;
+  showComments?: boolean;
 };
 
 export function ChapterReaderPageClient({
@@ -44,6 +46,8 @@ export function ChapterReaderPageClient({
   chapterPath,
   initialBookmarked,
   initialReadChapterNames,
+  routeBase = "/manga",
+  showComments = true,
 }: ChapterReaderPageClientProps) {
   const VISIT_DEDUPE_WINDOW_MS = 15_000;
   const router = useRouter();
@@ -76,6 +80,7 @@ export function ChapterReaderPageClient({
   const currentChapterInfo = chapters.find((c) => c.chapter_name === chapter);
   const latestChapter =
     chapters.length > 0 ? chapters[chapters.length - 1] : null;
+  const comicHref = `${routeBase}/${comic.slug}`;
 
   useEffect(() => {
     if (!currentChapterInfo) return;
@@ -144,13 +149,12 @@ export function ChapterReaderPageClient({
       }
 
       const comicSlug = comic?.slug || id;
+      const comicRouteHref = `${routeBase}/${comicSlug}`;
 
       if (e.key === "ArrowLeft") {
         if (prevChapter) {
           e.preventDefault();
-          router.push(
-            `/manga/${comicSlug}/chapter/${prevChapter.chapter_name}`,
-          );
+          router.push(`${comicRouteHref}/chapter/${prevChapter.chapter_name}`);
         }
         return;
       }
@@ -158,15 +162,13 @@ export function ChapterReaderPageClient({
       if (e.key === "ArrowRight") {
         if (nextChapter) {
           e.preventDefault();
-          router.push(
-            `/manga/${comicSlug}/chapter/${nextChapter.chapter_name}`,
-          );
+          router.push(`${comicRouteHref}/chapter/${nextChapter.chapter_name}`);
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [prevChapter, nextChapter, comic?.slug, id, router]);
+  }, [prevChapter, nextChapter, comic?.slug, id, router, routeBase]);
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -222,7 +224,7 @@ export function ChapterReaderPageClient({
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link href={`/manga/${comic.slug}`}>{comic.name}</Link>
+                    <Link href={comicHref}>{comic.name}</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -247,9 +249,7 @@ export function ChapterReaderPageClient({
 
               <div className="flex shrink-0 flex-wrap items-center justify-center gap-2">
                 {prevChapter ? (
-                  <Link
-                    href={`/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`}
-                  >
+                  <Link href={`${comicHref}/chapter/${prevChapter.chapter_name}`}>
                     <Button variant="outline" className="gap-2">
                       <ChevronLeft className="h-4 w-4" />
                       Previous
@@ -263,9 +263,7 @@ export function ChapterReaderPageClient({
                 )}
 
                 {nextChapter ? (
-                  <Link
-                    href={`/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`}
-                  >
+                  <Link href={`${comicHref}/chapter/${nextChapter.chapter_name}`}>
                     <Button variant="outline" className="gap-2">
                       Next
                       <ChevronRight className="h-4 w-4" />
@@ -301,9 +299,7 @@ export function ChapterReaderPageClient({
           <div className="rounded-xl border border-border bg-card p-4 md:p-5">
             <div className="mb-3 flex shrink-0 flex-wrap items-center justify-center gap-2">
               {prevChapter ? (
-                <Link
-                  href={`/manga/${comic.slug}/chapter/${prevChapter.chapter_name}`}
-                >
+                <Link href={`${comicHref}/chapter/${prevChapter.chapter_name}`}>
                   <Button variant="outline" className="gap-2">
                     <ChevronLeft className="h-4 w-4" />
                     Previous
@@ -317,9 +313,7 @@ export function ChapterReaderPageClient({
               )}
 
               {nextChapter ? (
-                <Link
-                  href={`/manga/${comic.slug}/chapter/${nextChapter.chapter_name}`}
-                >
+                <Link href={`${comicHref}/chapter/${nextChapter.chapter_name}`}>
                   <Button variant="outline" className="gap-2">
                     Next
                     <ChevronRight className="h-4 w-4" />
@@ -343,7 +337,7 @@ export function ChapterReaderPageClient({
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link href={`/manga/${comic.slug}`}>{comic.name}</Link>
+                    <Link href={comicHref}>{comic.name}</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -355,13 +349,15 @@ export function ChapterReaderPageClient({
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 pb-8">
-          <MangaCommentsSection
-            comicSlug={comic.slug || id}
-            comicName={comic.name || ""}
-            chapterName={chapter}
-          />
-        </section>
+        {showComments && (
+          <section className="mx-auto max-w-7xl px-4 pb-8">
+            <MangaCommentsSection
+              comicSlug={comic.slug || id}
+              comicName={comic.name || ""}
+              chapterName={chapter}
+            />
+          </section>
+        )}
       </main>
 
       <ChapterBottomNav
@@ -378,6 +374,7 @@ export function ChapterReaderPageClient({
         isBookmarked={isBookmarked}
         isBookmarkLoading={isBookmarkLoading}
         onToggleBookmark={handleBookmarkToggle}
+        routeBase={routeBase}
       />
 
       <Button
