@@ -8,6 +8,7 @@ export function Footer() {
       { label: "Manga", href: "/browse?type=manga" },
       { label: "Manhwa", href: "/browse?type=manhwa" },
       { label: "Manhua", href: "/browse?type=manhua" },
+      { label: "18+ Library", href: "/18+" },
       { label: "Latest Updates", href: "/latest" },
     ],
     genres: [

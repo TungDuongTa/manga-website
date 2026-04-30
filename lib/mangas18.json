@@ -1,0 +1,37 @@
+{
+  "_id": {
+    "$oid": "69f2f142d995b44ee500aff7"
+  },
+  "slug": "hanh-trinh-tinh-yeu",
+  "__v": 0,
+  "alternativeTitles": [
+    "Love Quest; 돈놀이 Thể loại: Manhwa Tác giả: QRQ Author: QRQ Nhóm dịch: Dâm Cô Nương Tình trạng: Đang tiến hành Lần cuối: 4 ngày trước Lượt xem: 86,790 Theo dõi 1.3K Đọc từ đầu Đọc mới nhất"
+  ],
+  "author": "QRQ",
+  "chapterUrls": [
+    "https://damconuong.lol/truyen/hanh-trinh-tinh-yeu/chapter-1",
+    "https://damconuong.lol/truyen/hanh-trinh-tinh-yeu/chapter-2",
+    "https://damconuong.lol/truyen/hanh-trinh-tinh-yeu/chapter-3",
+    "https://damconuong.lol/truyen/hanh-trinh-tinh-yeu/chapter-4",
+    "https://damconuong.lol/truyen/hanh-trinh-tinh-yeu/chapter-5",
+    "https://damconuong.lol/truyen/hanh-trinh-tinh-yeu/chapter-6"
+  ],
+  "coverCloudinaryUrl": "https://res.cloudinary.com/dqbr3lag1/image/upload/v1777529154/manga/covers/hanh-trinh-tinh-yeu-cover.jpg",
+  "coverUrl": "https://dcnvn2.mbpro.vip/images/covers/hanh-trinh-tinh-yeu.jpg",
+  "crawlStatus": "done",
+  "createdAt": {
+    "$date": "2026-04-30T06:05:54.913Z"
+  },
+  "description": "Cảm xúc chẳng thể kìm nén ngay cả trong một công ty game ngập đầu với những giờ làm thêm! Cuộc sống văn phòng bí mật của những người trẻ—những người không muốn từ bỏ cả công việc lẫn tình yêu—chính thức bắt đầu! 'Lạ thật đấy... sao bóng dáng người ấy cứ mãi quẩn quanh trong tâm trí mình thế này?'",
+  "lastCrawledAt": {
+    "$date": "2026-04-30T06:15:29.342Z"
+  },
+  "sourceUrl": "https://damconuong.lol/truyen/hanh-trinh-tinh-yeu",
+  "status": "Đang tiến hành",
+  "tags": ["manhwa"],
+  "title": "Hành trình tình yêu.",
+  "totalChapters": 6,
+  "updatedAt": {
+    "$date": "2026-04-30T06:15:29.343Z"
+  }
+}

@@ -15,12 +15,14 @@ interface MangaCardApiProps {
   comic: OTruyenComic;
   showLatestChapter?: boolean;
   variant?: "default" | "compact" | "horizontal";
+  routeBase?: string;
 }
 
 export function MangaCardApi({
   comic,
   showLatestChapter = true,
   variant = "default",
+  routeBase = "/manga",
 }: MangaCardApiProps) {
   const coverSrc = comic.thumb_url?.trim()
     ? getImageUrl(comic.thumb_url)
@@ -28,10 +30,11 @@ export function MangaCardApi({
   const latestChapterName = String(
     comic.chaptersLatest?.[0]?.chapter_name || "",
   ).trim();
+  const comicHref = `${routeBase}/${comic.slug}`;
 
   if (variant === "horizontal") {
     return (
-      <Link href={`/manga/${comic.slug}`} className="group block">
+      <Link href={comicHref} className="group block">
         <div className="flex gap-4 p-3 rounded-lg bg-card hover:bg-secondary transition-colors ">
           <div className="relative w-16 h-22  overflow-hidden rounded-md bg-muted">
             <Image
@@ -69,7 +72,7 @@ export function MangaCardApi({
 
   if (variant === "compact") {
     return (
-      <Link href={`/manga/${comic.slug}`} className="group block">
+      <Link href={comicHref} className="group block">
         <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-muted">
           <Image
             src={coverSrc}
@@ -90,7 +93,7 @@ export function MangaCardApi({
   }
 
   return (
-    <Link href={`/manga/${comic.slug}`} className="group block">
+    <Link href={comicHref} className="group block">
       <div className="relative aspect-[3/4] overflow-hidden rounded-xl mb-3 bg-muted">
         <Image
           src={coverSrc}

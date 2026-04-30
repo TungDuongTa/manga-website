@@ -37,6 +37,8 @@ type MangaDetailPageClientProps = {
   initialBookmarked: boolean;
   initialReadChapterNames: string[];
   initialTotalViews: number;
+  routeBase?: string;
+  showComments?: boolean;
 };
 
 export function MangaDetailPageClient({
@@ -45,6 +47,8 @@ export function MangaDetailPageClient({
   initialBookmarked,
   initialReadChapterNames,
   initialTotalViews,
+  routeBase = "/manga",
+  showComments = true,
 }: MangaDetailPageClientProps) {
   const router = useRouter();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -66,6 +70,7 @@ export function MangaDetailPageClient({
     () => new Set(initialReadChapterNames),
     [initialReadChapterNames],
   );
+  const comicHref = `${routeBase}/${comic.slug}`;
 
   const handleBookmarkToggle = async () => {
     if (!comic || isBookmarkLoading) return;
@@ -193,7 +198,7 @@ export function MangaDetailPageClient({
 
               <div className="flex flex-wrap gap-3">
                 {firstChapter && (
-                  <Link href={`/manga/${comic.slug}/chapter/${firstChapter.chapter_name}`}>
+                  <Link href={`${comicHref}/chapter/${firstChapter.chapter_name}`}>
                     <Button size="lg" className="gap-2">
                       <Play className="h-4 w-4" />
                       Start Reading
@@ -201,7 +206,7 @@ export function MangaDetailPageClient({
                   </Link>
                 )}
                 {latestChapter && (
-                  <Link href={`/manga/${comic.slug}/chapter/${latestChapter.chapter_name}`}>
+                  <Link href={`${comicHref}/chapter/${latestChapter.chapter_name}`}>
                     <Button size="lg" variant="outline" className="gap-2">
                       <BookOpen className="h-4 w-4" />
                       Latest Chapter
@@ -296,7 +301,7 @@ export function MangaDetailPageClient({
                     return (
                       <Link
                         key={`${chapterItem.chapter_name}-${index}`}
-                        href={`/manga/${comic.slug}/chapter/${chapterItem.chapter_name}`}
+                        href={`${comicHref}/chapter/${chapterItem.chapter_name}`}
                         className={`flex items-center justify-between border-b border-border p-4 transition-colors last:border-b-0 first:rounded-t-xl last:rounded-b-xl ${
                           isRead
                             ? "bg-primary/5 hover:bg-primary/10"
@@ -332,9 +337,14 @@ export function MangaDetailPageClient({
             </Tabs>
           </div>
 
-          <section className="mt-8">
-            <MangaCommentsSection comicSlug={comic.slug || id} comicName={comic.name || ""} />
-          </section>
+          {showComments && (
+            <section className="mt-8">
+              <MangaCommentsSection
+                comicSlug={comic.slug || id}
+                comicName={comic.name || ""}
+              />
+            </section>
+          )}
         </div>
       </main>
     </div>
