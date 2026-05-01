@@ -3,8 +3,6 @@ import { auth } from "../better-auth/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { connectToDatabase } from "@/database/mongoose";
-import { CommentModel } from "@/database/models/comment.model";
 export const signUpWithEmail = async (data: SignUpFormData) => {
   try {
     const response = await auth.api.signUpEmail({
@@ -67,24 +65,6 @@ export const updateUserProfile = async (data: UpdateUserProfileInput) => {
       },
     });
 
-    // Keep historical comments in sync with latest profile data.
-    await connectToDatabase();
-    await CommentModel.updateMany(
-      {
-        userId,
-        $or: [
-          { userName: { $ne: name } },
-          { userImage: { $ne: normalizedAvatar || "" } },
-        ],
-      },
-      {
-        $set: {
-          userName: name,
-          userImage: normalizedAvatar || "",
-        },
-      },
-    );
-
     revalidatePath("/");
     revalidatePath("/profile");
 
@@ -94,6 +74,7 @@ export const updateUserProfile = async (data: UpdateUserProfileInput) => {
     };
   } catch (error) {
     console.error("Update profile error:", error);
+    console.log("error");
     return { success: false, message: "Failed to update profile." };
   }
 };

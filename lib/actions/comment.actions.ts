@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
+import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/database/mongoose";
 import { CommentLikeModel } from "@/database/models/comment-like.model";
 import { CommentModel } from "@/database/models/comment.model";
@@ -89,15 +90,16 @@ const DEFAULT_RECENT_HOME_COMMENT_LIMIT = 10;
 const MAX_RECENT_HOME_COMMENT_LIMIT = 30;
 const DEFAULT_COMMENT_PAGE_SIZE = 10;
 const MAX_COMMENT_PAGE_SIZE = 30;
-const TOP_LEVEL_COMMENT_QUERY = {
-  $or: [
-    { parentCommentId: null },
-    { parentCommentId: { $exists: false } },
-    { parentCommentId: "" },
-  ],
-};
+const DEFAULT_COMMENT_AUTHOR_NAME = "User";
+const AUTH_USER_COLLECTION_CANDIDATES = ["user", "users"] as const;
+const TOP_LEVEL_COMMENT_QUERY = { parentCommentId: null };
 const COMMENT_PROJECTION =
-  "_id userId userName userImage content comicSlug comicName targetType chapterName parentCommentId likeCount createdAt updatedAt";
+  "_id userId content comicSlug comicName targetType chapterName parentCommentId likeCount createdAt updatedAt";
+
+type CommentAuthorProfile = {
+  name: string;
+  image: string;
+};
 
 const isDuplicateKeyError = (error: unknown) => {
   if (!error || typeof error !== "object") return false;
@@ -123,6 +125,65 @@ const buildCommentPagination = (
   };
 };
 
+const findAuthUsersByIds = async (
+  userIds: Array<ObjectId | string>,
+): Promise<Array<{ _id?: ObjectId | string; name?: string; image?: string }>> => {
+  if (userIds.length === 0) return [];
+
+  const mongoose = await connectToDatabase();
+  const db = mongoose.connection.db;
+  if (!db) return [];
+
+  for (const collectionName of AUTH_USER_COLLECTION_CANDIDATES) {
+    const exists = await db
+      .listCollections({ name: collectionName }, { nameOnly: true })
+      .hasNext();
+    if (!exists) continue;
+
+    const rows = await db
+      .collection(collectionName)
+      .find(
+        { _id: { $in: userIds as any[] } },
+        { projection: { _id: 1, name: 1, image: 1 } },
+      )
+      .toArray();
+    if (rows.length) return rows;
+  }
+
+  return [];
+};
+
+const getCommentAuthorProfileMap = async (
+  userIds: string[],
+): Promise<Map<string, CommentAuthorProfile>> => {
+  const normalizedUserIds = Array.from(
+    new Set(userIds.map((id) => String(id || "").trim()).filter(Boolean)),
+  );
+  if (normalizedUserIds.length === 0) return new Map();
+
+  const lookupIds: Array<ObjectId | string> = [];
+  for (const userId of normalizedUserIds) {
+    lookupIds.push(userId);
+    if (ObjectId.isValid(userId)) {
+      lookupIds.push(new ObjectId(userId));
+    }
+  }
+
+  const rows = await findAuthUsersByIds(lookupIds);
+  const profileMap = new Map<string, CommentAuthorProfile>();
+
+  for (const row of rows) {
+    const id = row?._id ? String(row._id) : "";
+    if (!id) continue;
+    profileMap.set(id, {
+      name: String(row.name || "").trim() || DEFAULT_COMMENT_AUTHOR_NAME,
+      image: String(row.image || "").trim(),
+    });
+  }
+
+  return profileMap;
+};
+
 const getViewerLikedCommentIdSet = async (
   viewerId: string | null | undefined,
   commentIds: string[],
@@ -133,10 +194,14 @@ const getViewerLikedCommentIdSet = async (
     new Set(commentIds.map((id) => String(id || "").trim()).filter(Boolean)),
   );
   if (uniqueCommentIds.length === 0) return new Set<string>();
+  const objectIds = uniqueCommentIds
+    .filter((id) => Types.ObjectId.isValid(id))
+    .map((id) => new Types.ObjectId(id));
+  if (objectIds.length === 0) return new Set<string>();
 
   const likes = await CommentLikeModel.find({
     userId: viewerId,
-    commentId: { $in: uniqueCommentIds },
+    commentId: { $in: objectIds },
   })
     .select("commentId")
     .lean();
@@ -149,24 +214,30 @@ const toFeedItem = (
   viewerId?: string | null,
   likedCommentIds?: Set<string>,
   levelMap?: Map<string, number>,
-): CommentFeedItem => ({
-  id: String(doc._id),
-  userId: doc.userId,
-  userName: doc.userName,
-  userImage: doc.userImage || "",
-  content: doc.content,
-  comicSlug: doc.comicSlug,
-  targetType: doc.targetType,
-  chapterName: doc.chapterName || null,
-  parentCommentId: doc.parentCommentId ? String(doc.parentCommentId) : null,
-  userLevel: levelMap?.get(String(doc.userId)) ?? 1,
-  likeCount: Number.isFinite(doc.likeCount) ? doc.likeCount : 0,
-  likedByViewer:
-    Boolean(viewerId) && Boolean(likedCommentIds?.has(String(doc._id))),
-  createdAt: new Date(
-    doc.createdAt || doc.updatedAt || Date.now(),
-  ).toISOString(),
-});
+  authorProfileMap?: Map<string, CommentAuthorProfile>,
+): CommentFeedItem => {
+  const userId = String(doc.userId || "").trim();
+  const authorProfile = authorProfileMap?.get(userId);
+
+  return {
+    id: String(doc._id),
+    userId,
+    userName: authorProfile?.name || DEFAULT_COMMENT_AUTHOR_NAME,
+    userImage: authorProfile?.image || "",
+    content: doc.content,
+    comicSlug: doc.comicSlug,
+    targetType: doc.targetType,
+    chapterName: doc.chapterName || null,
+    parentCommentId: doc.parentCommentId ? String(doc.parentCommentId) : null,
+    userLevel: levelMap?.get(userId) ?? 1,
+    likeCount: Number.isFinite(doc.likeCount) ? doc.likeCount : 0,
+    likedByViewer:
+      Boolean(viewerId) && Boolean(likedCommentIds?.has(String(doc._id))),
+    createdAt: new Date(
+      doc.createdAt || doc.updatedAt || Date.now(),
+    ).toISOString(),
+  };
+};
 
 const fetchDescendantsForParents = async (
   scopeQuery: Record<string, unknown>,
@@ -187,12 +258,16 @@ const fetchDescendantsForParents = async (
   while (currentParentIds.length > 0) {
     const batchIds = currentParentIds.filter((id) => !visitedParentIds.has(id));
     if (!batchIds.length) break;
+    const parentObjectIds = batchIds
+      .filter((id) => Types.ObjectId.isValid(id))
+      .map((id) => new Types.ObjectId(id));
+    if (!parentObjectIds.length) break;
 
     batchIds.forEach((id) => visitedParentIds.add(id));
 
     const rows = await CommentModel.find({
       ...scopeQuery,
-      parentCommentId: { $in: batchIds },
+      parentCommentId: { $in: parentObjectIds },
     })
       .select(COMMENT_PROJECTION)
       .lean();
@@ -259,24 +334,24 @@ const buildCommentFeed = async (
     pageSize,
   );
 
-  const likedCommentIds = await getViewerLikedCommentIdSet(
-    user?.id,
-    docs.map((doc: any) => String(doc._id)),
-  );
-  const levelMap = await getUserLevelMap(
-    Array.from(
-      new Set(
-        [...docs.map((doc: any) => String(doc.userId || "")), user?.id || ""]
-          .map((id) => id.trim())
-          .filter(Boolean),
-      ),
+  const commentIds = docs.map((doc: any) => String(doc._id));
+  const userIds = Array.from(
+    new Set(
+      [...docs.map((doc: any) => String(doc.userId || "")), user?.id || ""]
+        .map((id) => id.trim())
+        .filter(Boolean),
     ),
   );
+  const [likedCommentIds, levelMap, authorProfileMap] = await Promise.all([
+    getViewerLikedCommentIdSet(user?.id, commentIds),
+    getUserLevelMap(userIds),
+    getCommentAuthorProfileMap(userIds),
+  ]);
 
   return {
     viewer: toCommentViewer(user, levelMap),
     comments: docs.map((doc: any) =>
-      toFeedItem(doc, user?.id, likedCommentIds, levelMap),
+      toFeedItem(doc, user?.id, likedCommentIds, levelMap, authorProfileMap),
     ),
     pagination,
   };
@@ -392,20 +467,23 @@ export const getRecentTopLevelComments = async (
       .limit(safeLimit)
       .lean();
 
-    const levelMap = await getUserLevelMap(
-      docs.map((doc: any) => String(doc.userId || "")),
-    );
+    const userIds = docs.map((doc: any) => String(doc.userId || ""));
+    const [levelMap, authorProfileMap] = await Promise.all([
+      getUserLevelMap(userIds),
+      getCommentAuthorProfileMap(userIds),
+    ]);
 
     return docs.map((doc: any) => {
       const comicSlug = String(doc.comicSlug || "").trim();
       const storedComicName = String(doc.comicName || "").trim();
       const userId = String(doc.userId || "").trim();
       const comicName = storedComicName || comicSlug || "Unknown Manga";
+      const authorProfile = authorProfileMap.get(userId);
 
       return {
         id: String(doc._id),
-        userName: doc.userName || "User",
-        userImage: doc.userImage || "",
+        userName: authorProfile?.name || DEFAULT_COMMENT_AUTHOR_NAME,
+        userImage: authorProfile?.image || "",
         userLevel: levelMap.get(userId) ?? 1,
         content: doc.content || "",
         comicSlug,
@@ -440,7 +518,7 @@ export const createComment = async (
   const content = input.content.trim();
   const chapterName = input.chapterName?.trim() || null;
   const parentCommentId = input.parentCommentId?.trim() || null;
-  let normalizedParentCommentId: string | null = null;
+  let normalizedParentCommentId: Types.ObjectId | null = null;
   let resolvedComicName = comicName || comicSlug;
 
   if (!comicSlug) {
@@ -466,9 +544,10 @@ export const createComment = async (
     if (!Types.ObjectId.isValid(parentCommentId)) {
       return { success: false, message: "Invalid parent comment." };
     }
+    const parentObjectId = new Types.ObjectId(parentCommentId);
 
     const parent = await CommentModel.findOne({
-      _id: parentCommentId,
+      _id: parentObjectId,
       comicSlug,
     })
       .select("_id comicName targetType chapterName")
@@ -480,7 +559,7 @@ export const createComment = async (
 
     resolvedTargetType = parent.targetType;
     resolvedChapterName = parent.chapterName || null;
-    normalizedParentCommentId = String(parent._id);
+    normalizedParentCommentId = new Types.ObjectId(String(parent._id));
     resolvedComicName =
       String(parent.comicName || "").trim() || resolvedComicName;
   } else {
@@ -501,8 +580,6 @@ export const createComment = async (
 
   const created = await CommentModel.create({
     userId: user.id,
-    userName: user.name || user.email || "User",
-    userImage: user.image || "",
     comicSlug,
     comicName: resolvedComicName,
     targetType: resolvedTargetType,
@@ -526,6 +603,17 @@ export const createComment = async (
       user.id,
       new Set<string>(),
       levelMap,
+      new Map<string, CommentAuthorProfile>([
+        [
+          user.id,
+          {
+            name:
+              String(user.name || user.email || "").trim() ||
+              DEFAULT_COMMENT_AUTHOR_NAME,
+            image: String(user.image || "").trim(),
+          },
+        ],
+      ]),
     ),
   };
 };
@@ -546,9 +634,10 @@ export const toggleCommentLike = async (
   if (!Types.ObjectId.isValid(normalizedId)) {
     return { success: false, message: "Invalid comment identifier." };
   }
+  const commentObjectId = new Types.ObjectId(normalizedId);
 
   await connectToDatabase();
-  const existing = await CommentModel.findById(normalizedId)
+  const existing = await CommentModel.findById(commentObjectId)
     .select("_id comicSlug targetType chapterName")
     .lean();
 
@@ -557,7 +646,7 @@ export const toggleCommentLike = async (
   }
 
   const removedLike = await CommentLikeModel.findOneAndDelete({
-    commentId: normalizedId,
+    commentId: commentObjectId,
     userId: user.id,
   })
     .select("_id")
@@ -568,7 +657,7 @@ export const toggleCommentLike = async (
 
   if (removedLike) {
     const updatedComment = await CommentModel.findOneAndUpdate(
-      { _id: normalizedId },
+      { _id: commentObjectId },
       { $inc: { likeCount: -1 } },
       {
         returnDocument: "after",
@@ -583,7 +672,7 @@ export const toggleCommentLike = async (
     let createdLike = false;
     try {
       await CommentLikeModel.create({
-        commentId: normalizedId,
+        commentId: commentObjectId,
         userId: user.id,
       });
       createdLike = true;
@@ -595,7 +684,7 @@ export const toggleCommentLike = async (
 
     if (createdLike) {
       const updatedComment = await CommentModel.findOneAndUpdate(
-        { _id: normalizedId },
+        { _id: commentObjectId },
         { $inc: { likeCount: 1 } },
         {
           returnDocument: "after",
@@ -608,7 +697,7 @@ export const toggleCommentLike = async (
       likedByViewer = true;
     } else {
       // Duplicate key means the like already exists (race-safe no-op on count).
-      const commentDoc = await CommentModel.findById(normalizedId)
+      const commentDoc = await CommentModel.findById(commentObjectId)
         .select("likeCount")
         .lean();
       updatedLikeCount = Number(commentDoc?.likeCount ?? 0);
@@ -619,7 +708,7 @@ export const toggleCommentLike = async (
   const safeLikeCount = Math.max(0, Math.floor(updatedLikeCount ?? 0));
   if (safeLikeCount === 0) {
     await CommentModel.updateOne(
-      { _id: normalizedId, likeCount: { $lt: 0 } },
+      { _id: commentObjectId, likeCount: { $lt: 0 } },
       { $set: { likeCount: 0 } },
     );
   }
