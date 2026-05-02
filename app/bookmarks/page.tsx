@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Bookmark,
@@ -18,8 +19,26 @@ import {
 } from "@/lib/actions/bookmark.actions";
 import { getCurrentUserReadingHistoryPage } from "@/lib/actions/reading-progress.actions";
 import { getSessionUser } from "@/lib/server-session";
+import { withSiteSuffix } from "@/lib/seo";
 
 const ITEMS_PER_PAGE = 24;
+
+export const metadata: Metadata = {
+  title: "My Library",
+  description: "Manage your bookmarks and reading history.",
+  alternates: {
+    canonical: "/bookmarks",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: withSiteSuffix("My Library"),
+    description: "Manage your bookmarks and reading history.",
+    url: "/bookmarks",
+  },
+};
 
 interface BookmarksPageProps {
   searchParams: Promise<{

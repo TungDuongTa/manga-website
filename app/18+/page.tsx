@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ShieldAlert } from "lucide-react";
 import { MangaCardApi } from "@/components/manga-card-api";
@@ -5,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getManga18ListPage } from "@/lib/actions/manga18.actions";
 import { getVisiblePages } from "@/lib/pagination";
+import { buildCanonicalPath, withSiteSuffix } from "@/lib/seo";
 
 interface PageProps {
   searchParams: Promise<{ page?: string }>;
@@ -15,6 +17,37 @@ const toSafePageNumber = (value: string | undefined): number => {
   if (!Number.isFinite(parsed) || parsed <= 0) return 1;
   return parsed;
 };
+
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const { page } = await searchParams;
+  const currentPage = toSafePageNumber(page);
+  const canonicalPath = buildCanonicalPath("/18+", {
+    page: currentPage > 1 ? currentPage : undefined,
+  });
+  const pageSuffix = currentPage > 1 ? ` - Page ${currentPage}` : "";
+  const title = `18+ Manga Library${pageSuffix}`;
+  const description =
+    "Explore the mature manga collection with chapter updates and browsing tools.";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      title: withSiteSuffix(title),
+      description,
+      url: canonicalPath,
+    },
+    twitter: {
+      title: withSiteSuffix(title),
+      description,
+    },
+  };
+}
 
 export default async function Manga18Page({ searchParams }: PageProps) {
   const { page } = await searchParams;
@@ -121,4 +154,3 @@ export default async function Manga18Page({ searchParams }: PageProps) {
     </div>
   );
 }
-

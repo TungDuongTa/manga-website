@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Trophy, Flame, TrendingUp, Clock, Eye } from "lucide-react";
 import { MangaCardApi } from "@/components/manga-card-api";
@@ -11,6 +12,10 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  buildCanonicalPath,
+  withSiteSuffix,
+} from "@/lib/seo";
 import {
   getMangaRankings,
   type MangaRankingPeriod,
@@ -40,6 +45,12 @@ interface RankingPageProps {
   }>;
 }
 
+const toSafePageNumber = (value: string | undefined): number => {
+  const parsed = Number.parseInt(value || "1", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+  return parsed;
+};
+
 const isRankingPeriod = (value: string): value is MangaRankingPeriod =>
   RANKING_TABS.some((tab) => tab.key === value);
 
@@ -54,12 +65,48 @@ const buildRankingUrl = (tab: MangaRankingPeriod, page: number) => {
   return `/ranking?${params.toString()}`;
 };
 
+export async function generateMetadata({
+  searchParams,
+}: RankingPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const activeTab =
+    params.tab && isRankingPeriod(params.tab) ? params.tab : "daily";
+  const currentPage = toSafePageNumber(params.page);
+  const tabLabel =
+    RANKING_TABS.find((tab) => tab.key === activeTab)?.label || "Daily";
+  const canonicalPath = buildCanonicalPath("/ranking", {
+    tab: activeTab === "daily" ? undefined : activeTab,
+    page: currentPage > 1 ? currentPage : undefined,
+  });
+  const pageSuffix = currentPage > 1 ? ` - Page ${currentPage}` : "";
+  const title = `${tabLabel} Manga Rankings${pageSuffix}`;
+  const description =
+    "Discover top manga by view count with daily, weekly, monthly, and all-time ranking charts.";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      title: withSiteSuffix(title),
+      description,
+      url: canonicalPath,
+    },
+    twitter: {
+      title: withSiteSuffix(title),
+      description,
+    },
+  };
+}
+
 export default async function RankingPage({ searchParams }: RankingPageProps) {
   const params = await searchParams;
   const activeTab =
     params.tab && isRankingPeriod(params.tab) ? params.tab : "daily";
 
-  const requestedPage = Number.parseInt(params.page || "1", 10);
+  const requestedPage = toSafePageNumber(params.page);
   const rankings = await getMangaRankings(MAX_ITEMS_PER_TAB);
   const rankedComics = rankings[activeTab].slice(0, MAX_ITEMS_PER_TAB);
 

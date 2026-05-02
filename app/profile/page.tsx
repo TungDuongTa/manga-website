@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { UserRound } from "lucide-react";
@@ -5,6 +6,24 @@ import { auth } from "@/lib/better-auth/auth";
 import { getCurrentUserReadingExpStats } from "@/lib/actions/reading-progress.actions";
 import { Button } from "@/components/ui/button";
 import { ProfilePageClient } from "@/components/profile/profile-page-client";
+import { withSiteSuffix } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "Profile",
+  description: "Manage your profile, avatar, and reader level.",
+  alternates: {
+    canonical: "/profile",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    title: withSiteSuffix("Profile"),
+    description: "Manage your profile, avatar, and reader level.",
+    url: "/profile",
+  },
+};
 
 export default async function ProfilePage() {
   const session = await auth.api.getSession({

@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
 import "@/app/globals.css";
 import { getSessionUser } from "@/lib/server-session";
 import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+  title: "Account",
+  description: "Sign in or create an account to sync bookmarks and reading progress.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function Layout({
   children,
@@ -12,7 +22,7 @@ export default async function Layout({
     redirect("/");
   }
   return (
-    <main lang="en" suppressHydrationWarning>
+    <main>
       <section className={` font-sans antialiased`}>{children}</section>
     </main>
   );

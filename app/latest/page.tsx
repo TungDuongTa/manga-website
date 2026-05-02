@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import { MangaCardApi } from "@/components/manga-card-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getListByType } from "@/lib/actions/otruyen-actions";
 import { getVisiblePages } from "@/lib/pagination";
+import { buildCanonicalPath, withSiteSuffix } from "@/lib/seo";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 
@@ -10,9 +12,46 @@ interface PageProps {
   searchParams: Promise<{ page?: string }>;
 }
 
+const toSafePageNumber = (value: string | undefined): number => {
+  const parsed = Number.parseInt(value || "1", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+  return parsed;
+};
+
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const { page } = await searchParams;
+  const currentPage = toSafePageNumber(page);
+  const canonicalPath = buildCanonicalPath("/latest", {
+    page: currentPage > 1 ? currentPage : undefined,
+  });
+  const pageSuffix = currentPage > 1 ? ` - Page ${currentPage}` : "";
+  const title = `Latest Manga Updates${pageSuffix}`;
+  const description =
+    "Browse the newest manga chapter releases and recent updates across the library.";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      title: withSiteSuffix(title),
+      description,
+      url: canonicalPath,
+    },
+    twitter: {
+      title: withSiteSuffix(title),
+      description,
+    },
+  };
+}
+
 export default async function LatestPage({ searchParams }: PageProps) {
   const { page } = await searchParams;
-  const currentPage = parseInt(page || "1");
+  const currentPage = toSafePageNumber(page);
 
   const data = await getListByType("truyen-moi", currentPage);
   const comics = data?.items || [];

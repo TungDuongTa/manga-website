@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { HeroSectionApi } from "@/components/hero-section-api";
 import { RankingSidebarApi } from "@/components/ranking-sidebar-api";
 import { CommentsSection } from "@/components/comments-section";
@@ -5,8 +6,26 @@ import { MangaCardApi } from "@/components/manga-card-api";
 import { getHomeData, getListByType } from "@/lib/actions/otruyen-actions";
 import { getRecentTopLevelComments } from "@/lib/actions/comment.actions";
 import { getMangaRankings } from "@/lib/actions/manga-view.actions";
+import { SITE_DESCRIPTION, withSiteSuffix } from "@/lib/seo";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Home",
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: withSiteSuffix("Read Manga, Manhwa & Manhua Online"),
+    description: SITE_DESCRIPTION,
+    url: "/",
+  },
+  twitter: {
+    title: withSiteSuffix("Read Manga, Manhwa & Manhua Online"),
+    description: SITE_DESCRIPTION,
+  },
+};
 
 export default async function HomePage() {
   // Fetch data in parallel
