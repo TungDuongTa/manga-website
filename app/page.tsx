@@ -6,7 +6,12 @@ import { MangaCardApi } from "@/components/manga-card-api";
 import { getHomeData, getListByType } from "@/lib/actions/otruyen-actions";
 import { getRecentTopLevelComments } from "@/lib/actions/comment.actions";
 import { getMangaRankings } from "@/lib/actions/manga-view.actions";
-import { SITE_DESCRIPTION, withSiteSuffix } from "@/lib/seo";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  toAbsoluteUrl,
+  withSiteSuffix,
+} from "@/lib/seo";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
@@ -41,9 +46,28 @@ export default async function HomePage() {
   const featuredComics = homeData?.items || [];
   const latestComics = latestData?.items || [];
   const completedComics = completedData?.items || [];
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    alternateName: ["Vua Truyen"],
+    url: toAbsoluteUrl("/"),
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${toAbsoluteUrl("/browse")}?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
 
   return (
     <div className="min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       <main className="mx-auto max-w-7xl px-4 py-8">
         {/* Hero Section */}
         <section className="mb-12">
