@@ -18,7 +18,10 @@ import {
   UserRound,
 } from "lucide-react";
 import { signOut, updateUserProfile } from "@/lib/actions/auth.actions";
-import { getLevelBadgeTier, getLevelUsernameEffect } from "@/lib/level-badge-tiers";
+import {
+  getLevelBadgeTier,
+  getLevelUsernameEffect,
+} from "@/lib/level-badge-tiers";
 import {
   EXP_PER_CHAPTER,
   EXP_PER_LEVEL,
