@@ -54,13 +54,6 @@ type Chapter18Doc = {
   pages?: unknown;
 };
 
-type ChapterCandidate = {
-  chapterName: string;
-  chapterNumber: number | null;
-  chapter_api_data: string;
-  chapter_title: string;
-};
-
 export type Manga18ChapterContent = {
   chapterName: string;
   chapterImages: ChapterImage[];
@@ -109,20 +102,21 @@ const stripTrailingZeroes = (value: string): string =>
 const isStrictNumericChapterName = (value: string): boolean =>
   /^[0-9]+(?:\.[0-9]+)?$/.test(value);
 
+const stripChapterPrefix = (value: unknown): string =>
+  cleanString(value)
+    .replace(/^(?:chapter|chap)[\s\-_]*/i, "")
+    .trim();
+
 const parseChapterNumber = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const normalized = cleanString(value)
-    .replace(/^chapter[\s\-_]*/i, "")
-    .trim();
+  const normalized = stripChapterPrefix(value);
   if (!normalized) return null;
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
 const normalizeChapterName = (value: unknown): string => {
-  const normalized = cleanString(value)
-    .replace(/^chapter[\s\-_]*/i, "")
-    .trim();
+  const normalized = stripChapterPrefix(value);
 
   if (!normalized) return "";
   if (!isStrictNumericChapterName(normalized)) return normalized;
@@ -137,7 +131,7 @@ const extractChapterFromUrl = (url: string): string => {
   const normalizedUrl = cleanString(url);
   if (!normalizedUrl) return "";
 
-  const chapterMatch = normalizedUrl.match(/chapter[\s\-_]*([^/?#]+)/i);
+  const chapterMatch = normalizedUrl.match(/(?:chapter|chap)[\s\-_]*([^/?#]+)/i);
   if (chapterMatch?.[1]) {
     return normalizeChapterName(chapterMatch[1]);
   }
@@ -152,32 +146,11 @@ const getLatestChapterNameFromUrls = (
   fallbackTotalChapters: unknown,
 ): string => {
   const candidates = chapterUrls
-    .map((url, index) => {
-      const extracted = extractChapterFromUrl(url);
-      if (!extracted) return null;
-      return {
-        index,
-        chapterName: extracted,
-        chapterNumber: parseChapterNumber(extracted),
-      };
-    })
-    .filter((candidate): candidate is NonNullable<typeof candidate> =>
-      Boolean(candidate),
-    );
+    .map((url) => extractChapterFromUrl(url))
+    .filter(Boolean);
 
   if (candidates.length > 0) {
-    candidates.sort((a, b) => {
-      if (a.chapterNumber !== null && b.chapterNumber !== null) {
-        if (a.chapterNumber === b.chapterNumber) return a.index - b.index;
-        return a.chapterNumber - b.chapterNumber;
-      }
-
-      if (a.chapterNumber !== null) return 1;
-      if (b.chapterNumber !== null) return -1;
-      return a.index - b.index;
-    });
-
-    return candidates[candidates.length - 1].chapterName;
+    return candidates[candidates.length - 1];
   }
 
   const fallbackNumber = parseChapterNumber(fallbackTotalChapters);
@@ -222,110 +195,46 @@ const toAuthorList = (value: unknown): string[] => {
     .filter(Boolean);
 };
 
-const compareChapterCandidates = (a: ChapterCandidate, b: ChapterCandidate) => {
-  if (a.chapterNumber !== null && b.chapterNumber !== null) {
-    if (a.chapterNumber === b.chapterNumber) {
-      return a.chapterName.localeCompare(b.chapterName, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      });
-    }
-    return a.chapterNumber - b.chapterNumber;
-  }
+const toChapterDataFromDocs = (chapterDocs: Chapter18Doc[]): ChapterData[] => {
+  const seen = new Set<string>();
+  const serverData: ChapterData[] = [];
 
-  if (a.chapterNumber !== null) return -1;
-  if (b.chapterNumber !== null) return 1;
-  return a.chapterName.localeCompare(b.chapterName, undefined, {
-    numeric: true,
-    sensitivity: "base",
-  });
-};
+  for (const doc of chapterDocs) {
+    const chapterName =
+      extractChapterFromUrl(cleanString(doc.sourceUrl)) ||
+      normalizeChapterName(doc.chapterNumber);
+    if (!chapterName || seen.has(chapterName)) continue;
 
-const toChapterCandidatesFromDocs = (chapterDocs: Chapter18Doc[]): ChapterCandidate[] => {
-  return chapterDocs
-    .map((doc) => {
-      const chapterName =
-        extractChapterFromUrl(cleanString(doc.sourceUrl)) ||
-        normalizeChapterName(doc.chapterNumber);
-      if (!chapterName) return null;
-
-      return {
-        chapterName,
-        chapterNumber: parseChapterNumber(chapterName),
-        chapter_api_data: chapterName,
-        chapter_title: cleanString(doc.title),
-      } satisfies ChapterCandidate;
-    })
-    .filter((candidate): candidate is ChapterCandidate => Boolean(candidate));
-};
-
-const toChapterCandidatesFromUrls = (chapterUrls: string[]): ChapterCandidate[] => {
-  return chapterUrls
-    .map((url) => {
-      const chapterName = extractChapterFromUrl(url);
-      if (!chapterName) return null;
-
-      return {
-        chapterName,
-        chapterNumber: parseChapterNumber(chapterName),
-        chapter_api_data: chapterName,
-        chapter_title: "",
-      } satisfies ChapterCandidate;
-    })
-    .filter((candidate): candidate is ChapterCandidate => Boolean(candidate));
-};
-
-const toChapterCandidatesFromTotal = (
-  totalChaptersValue: unknown,
-): ChapterCandidate[] => {
-  const totalChapters = Number.parseInt(cleanString(totalChaptersValue), 10);
-  if (!Number.isFinite(totalChapters) || totalChapters <= 0) return [];
-
-  return Array.from({ length: totalChapters }, (_, index) => {
-    const chapterName = String(index + 1);
-    return {
-      chapterName,
-      chapterNumber: index + 1,
-      chapter_api_data: chapterName,
-      chapter_title: "",
-    } satisfies ChapterCandidate;
-  });
-};
-
-const mergeChapterCandidates = (
-  primary: ChapterCandidate[],
-  fallback: ChapterCandidate[],
-): ChapterData[] => {
-  const map = new Map<string, ChapterCandidate>();
-
-  for (const candidate of fallback) {
-    map.set(candidate.chapterName, candidate);
-  }
-
-  for (const candidate of primary) {
-    map.set(candidate.chapterName, candidate);
-  }
-
-  return Array.from(map.values())
-    .sort(compareChapterCandidates)
-    .map((candidate) => ({
+    seen.add(chapterName);
+    serverData.push({
       filename: "",
-      chapter_name: candidate.chapterName,
-      chapter_title: candidate.chapter_title,
-      chapter_api_data: candidate.chapter_api_data,
-    }));
-};
-
-const buildFallbackChapterCandidates = (
-  chapterCandidatesFromDocs: ChapterCandidate[],
-  chapterCandidatesFromUrls: ChapterCandidate[],
-  totalChaptersValue: unknown,
-): ChapterCandidate[] => {
-  if (chapterCandidatesFromDocs.length > 0 || chapterCandidatesFromUrls.length > 0) {
-    return chapterCandidatesFromUrls;
+      chapter_name: chapterName,
+      chapter_title: cleanString(doc.title),
+      chapter_api_data: chapterName,
+    });
   }
 
-  return toChapterCandidatesFromTotal(totalChaptersValue);
+  return serverData;
+};
+
+const toChapterDataFromUrls = (chapterUrls: string[]): ChapterData[] => {
+  const seen = new Set<string>();
+  const serverData: ChapterData[] = [];
+
+  for (const url of chapterUrls) {
+    const chapterName = extractChapterFromUrl(url);
+    if (!chapterName || seen.has(chapterName)) continue;
+
+    seen.add(chapterName);
+    serverData.push({
+      filename: "",
+      chapter_name: chapterName,
+      chapter_title: "",
+      chapter_api_data: chapterName,
+    });
+  }
+
+  return serverData;
 };
 
 const toMangaCardItem = (doc: Manga18Doc): OTruyenComic => {
@@ -454,17 +363,11 @@ export const getManga18Detail = async (
     }
 
     const chapterUrls = normalizeStringArray(mangaDoc.chapterUrls);
-    const chapterCandidatesFromDocs = toChapterCandidatesFromDocs(chapterDocs);
-    const chapterCandidatesFromUrls = toChapterCandidatesFromUrls(chapterUrls);
-    const fallbackChapterCandidates = buildFallbackChapterCandidates(
-      chapterCandidatesFromDocs,
-      chapterCandidatesFromUrls,
-      mangaDoc.totalChapters,
-    );
-    const serverData = mergeChapterCandidates(
-      chapterCandidatesFromDocs,
-      fallbackChapterCandidates,
-    );
+    const serverDataFromDocs = toChapterDataFromDocs(chapterDocs);
+    const serverData =
+      serverDataFromDocs.length > 0
+        ? serverDataFromDocs
+        : toChapterDataFromUrls(chapterUrls);
 
     return {
       _id: cleanString(mangaDoc._id) || normalizedSlug,

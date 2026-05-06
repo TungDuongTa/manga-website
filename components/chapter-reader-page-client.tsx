@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { useBookmarkToggle } from "@/hooks/use-bookmark-toggle";
 import { recordChapterVisit } from "@/lib/actions/reading-progress.actions";
-import { compareChapterNames } from "@/lib/chapter-utils";
 import {
   type ChapterImage,
   type ComicDetailItem,
@@ -55,13 +54,7 @@ export function ChapterReaderPageClient({
   );
 
   const chapters = comic.chapters?.[0]?.server_data || [];
-  const orderedChapters = useMemo(
-    () =>
-      [...chapters].sort((a, b) =>
-        compareChapterNames(a.chapter_name, b.chapter_name),
-      ),
-    [chapters],
-  );
+  const orderedChapters = chapters;
   const currentChapterIndex = orderedChapters.findIndex(
     (c) => c.chapter_name === chapter,
   );

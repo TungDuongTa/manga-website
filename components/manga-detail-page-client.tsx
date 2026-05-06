@@ -52,11 +52,10 @@ export function MangaDetailPageClient({
   const [isSharing, setIsSharing] = useState(false);
 
   const chapters = comic.chapters?.[0]?.server_data || [];
-  const sortedChapters = [...chapters].sort((a, b) => {
-    const aNum = parseFloat(a.chapter_name) || 0;
-    const bNum = parseFloat(b.chapter_name) || 0;
-    return chaptersOrder === "desc" ? bNum - aNum : aNum - bNum;
-  });
+  const sortedChapters = useMemo(
+    () => (chaptersOrder === "desc" ? [...chapters].reverse() : [...chapters]),
+    [chapters, chaptersOrder],
+  );
 
   const latestChapter =
     chapters.length > 0 ? chapters[chapters.length - 1] : null;
