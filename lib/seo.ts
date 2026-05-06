@@ -3,27 +3,54 @@ export const SITE_NAME = "VuaTruyen";
 export const SITE_DESCRIPTION =
   "Đọc truyện tranh manga, manhwa và manhua online, được cập nhật hằng ngày, có bảng xếp hạng, theo dõi và tiến độ đọc.";
 
-const FALLBACK_BASE_URL = "http://localhost:3000";
+const FALLBACK_BASE_URL = "https://vuatruyen.vercel.app";
 
-const ensureValidBaseUrl = (value: string): string => {
+const normalizeBaseUrlInput = (value: string): string => {
   const normalized = value.trim().replace(/\/+$/, "");
-  if (!normalized) return FALLBACK_BASE_URL;
+  if (!normalized) return "";
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  return `https://${normalized}`;
+};
+
+const parseBaseUrl = (value: string): URL | null => {
+  const normalized = normalizeBaseUrlInput(value);
+  if (!normalized) return null;
 
   try {
     const parsed = new URL(normalized);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return FALLBACK_BASE_URL;
+      return null;
     }
-    return parsed.toString().replace(/\/+$/, "");
+    return parsed;
   } catch {
-    return FALLBACK_BASE_URL;
+    return null;
   }
 };
 
 export const getBaseUrl = (): URL => {
-  const envBase =
-    process.env.NEXT_PUBLIC_BASE_URL || process.env.BETTER_AUTH_URL || "";
-  return new URL(ensureValidBaseUrl(envBase));
+  const candidates = [
+    process.env.NEXT_PUBLIC_BASE_URL,
+    process.env.BETTER_AUTH_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = parseBaseUrl(candidate || "");
+    if (!parsed) continue;
+
+    // Prefer non-localhost URLs in production when multiple values are present.
+    if (
+      process.env.NODE_ENV === "production" &&
+      parsed.hostname === "localhost"
+    ) {
+      continue;
+    }
+
+    return new URL(parsed.toString().replace(/\/+$/, ""));
+  }
+
+  return new URL(FALLBACK_BASE_URL);
 };
 
 export const toAbsoluteUrl = (path: string): string => {

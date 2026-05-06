@@ -6,33 +6,16 @@ import { MangaCardApi } from "@/components/manga-card-api";
 import { getHomeData, getListByType } from "@/lib/actions/otruyen-actions";
 import { getRecentTopLevelComments } from "@/lib/actions/comment.actions";
 import { getMangaRankings } from "@/lib/actions/manga-view.actions";
-import {
-  SITE_DESCRIPTION,
-  SITE_NAME,
-  toAbsoluteUrl,
-  withSiteSuffix,
-} from "@/lib/seo";
+import { SITE_DESCRIPTION, SITE_NAME, toAbsoluteUrl } from "@/lib/seo";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Trang chủ",
+  title:
+    "VuaTruyen - Đọc truyện tranh manga, manwha và manhua mới nhất đưuọc cập nhật hàng ngày.",
   description: SITE_DESCRIPTION,
   alternates: {
     canonical: "/",
-  },
-  openGraph: {
-    title: withSiteSuffix(
-      "Đọc truyện tranh manga, manhwa và manhua miễn phí được cập nhật nhanh nhất",
-    ),
-    description: SITE_DESCRIPTION,
-    url: "/",
-  },
-  twitter: {
-    title: withSiteSuffix(
-      "Đọc truyện tranh manga, manhwa và manhua miễn phí được cập nhật nhanh nhất",
-    ),
-    description: SITE_DESCRIPTION,
   },
 };
 
