@@ -31,10 +31,7 @@ This project is a production-style manga web app focused on:
 - Fast content browsing and chapter reading
 - Personalized user experience (bookmarks, history, profile, levels)
 - Community interaction through threaded comments
-- Hybrid data architecture:
-  - Public manga feed from `https://otruyenapi.com/v1/api`
-  - Private app data in MongoDB
-  - Separate local 18+ content (`mangas18`, `chapters18`)
+- Hybrid data architecture
 
 ## Feature Highlights
 
