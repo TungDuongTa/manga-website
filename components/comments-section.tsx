@@ -79,11 +79,14 @@ export function CommentsSection({ comments }: CommentsSectionProps) {
                         <Badge
                           variant="outline"
                           className={cn(
-                            "h-5 shrink-0 rounded-full px-1.5 text-[10px] font-semibold",
+                            "h-5 max-w-[8rem] shrink-0 rounded-full px-2 text-[10px] font-semibold",
                             levelBadgeTier.className,
                           )}
+                          title={levelBadgeTier.title}
                         >
-                          Lv {comment.userLevel}
+                          <span className="truncate">
+                            {levelBadgeTier.title}
+                          </span>
                         </Badge>
                       </div>
                       <span className="shrink-0 text-xs text-muted-foreground">

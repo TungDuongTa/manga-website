@@ -178,13 +178,12 @@ export function ProfilePageClient({
           </div>
           <Badge
             className={cn(
-              "w-fit gap-1.5 rounded-full px-3 py-1.5 text-sm",
+              "w-fit gap-1.5 rounded-full px-3 py-1.5 text-sm ",
               levelBadgeTier.className,
             )}
           >
             <LevelBadgeIcon className="h-4 w-4" />
-            Level {readingExp.level}
-            <span className="hidden text-[10px] font-medium uppercase tracking-wide sm:inline">
+            <span className="max-w-44 truncate text-xs font-semibold uppercase tracking-wide">
               {levelBadgeTier.title}
             </span>
           </Badge>
