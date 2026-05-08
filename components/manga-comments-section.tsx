@@ -128,6 +128,7 @@ export function MangaCommentsSection({
   const viewerUsernameEffect = viewer
     ? getLevelUsernameEffect(viewer.level)
     : null;
+  const viewerLevelBadgeTier = viewer ? getLevelBadgeTier(viewer.level) : null;
 
   const scopeMeta = useMemo(
     () =>
@@ -545,6 +546,7 @@ export function MangaCommentsSection({
 
   const renderCommentRow = (comment: CommentFeedItem, nested = false) => {
     const usernameEffect = getLevelUsernameEffect(comment.userLevel);
+    const levelBadgeTier = getLevelBadgeTier(comment.userLevel);
 
     return (
       <div
@@ -579,11 +581,12 @@ export function MangaCommentsSection({
             <Badge
               variant="outline"
               className={cn(
-                "h-5 rounded-full px-1.5 text-[10px] font-semibold",
-                getLevelBadgeTier(comment.userLevel).className,
+                "h-5 max-w-[8rem] rounded-full px-2 text-[10px] font-semibold",
+                levelBadgeTier.className,
               )}
+              title={levelBadgeTier.title}
             >
-              Lv {comment.userLevel}
+              <span className="truncate">{levelBadgeTier.title}</span>
             </Badge>
             {comment.chapterName && (
               <Badge
@@ -694,7 +697,7 @@ export function MangaCommentsSection({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-border bg-[linear-gradient(180deg,oklch(0.18_0.03_250),oklch(0.15_0.03_250))] p-4 shadow-lg shadow-black/15 md:p-6",
+        "rounded-2xl border border-border bg-gradient-to-b from-card via-card to-secondary/45 p-4 shadow-lg shadow-black/15 md:p-6",
         className,
       )}
     >
@@ -739,11 +742,14 @@ export function MangaCommentsSection({
                   <Badge
                     variant="outline"
                     className={cn(
-                      "h-5 rounded-full px-1.5 text-[10px] font-semibold",
-                      getLevelBadgeTier(viewer.level).className,
+                      "h-5 max-w-[8rem] rounded-full px-2 text-[10px] font-semibold",
+                      viewerLevelBadgeTier?.className,
                     )}
+                    title={viewerLevelBadgeTier?.title}
                   >
-                    Lv {viewer.level}
+                    <span className="truncate">
+                      {viewerLevelBadgeTier?.title}
+                    </span>
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">

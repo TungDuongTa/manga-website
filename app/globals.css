@@ -251,81 +251,166 @@
   }
 }
 
-.username-mask--mist {
-  --username-start: #cbd5e1;
-  --username-mid: #f8fafc;
-  --username-end: #94a3b8;
+.username-mask--pham-nhan {
+  --username-start: #94a3b8;
+  --username-mid: #e2e8f0;
+  --username-end: #64748b;
   --username-glow-rgb: 148 163 184;
+  --username-speed: 6.3s;
 }
 
-.username-mask--ember {
+.username-mask--khai-mach {
+  --username-start: #a8a29e;
+  --username-mid: #f5f5f4;
+  --username-end: #78716c;
+  --username-glow-rgb: 168 162 158;
+  --username-speed: 6.1s;
+}
+
+.username-mask--tu-khi {
   --username-start: #f59e0b;
-  --username-mid: #fcd34d;
-  --username-end: #fb7185;
+  --username-mid: #fde68a;
+  --username-end: #f97316;
   --username-glow-rgb: 245 158 11;
-  --username-speed: 5.4s;
+  --username-speed: 5.9s;
 }
 
-.username-mask--steel {
-  --username-start: #e4e4e7;
-  --username-mid: #ffffff;
-  --username-end: #a1a1aa;
-  --username-glow-rgb: 212 212 216;
+.username-mask--luyen-cot {
+  --username-start: #f43f5e;
+  --username-mid: #ffe4e6;
+  --username-end: #f97316;
+  --username-glow-rgb: 244 63 94;
+  --username-speed: 5.7s;
 }
 
-.username-mask--solar {
-  --username-start: #fde047;
+.username-mask--hoa-kinh {
+  --username-start: #f5d0fe;
+  --username-mid: #fdf4ff;
+  --username-end: #d946ef;
+  --username-glow-rgb: 217 70 239;
+  --username-speed: 5.6s;
+}
+
+.username-mask--dia-sat {
+  --username-start: #93c5fd;
+  --username-mid: #eff6ff;
+  --username-end: #2563eb;
+  --username-glow-rgb: 59 130 246;
+  --username-speed: 5.5s;
+}
+
+.username-mask--thien-cuong {
+  --username-start: #facc15;
   --username-mid: #fef9c3;
   --username-end: #fb923c;
   --username-glow-rgb: 250 204 21;
-  --username-speed: 5s;
+  --username-speed: 5.3s;
 }
 
-.username-mask--plasma {
-  --username-start: #67e8f9;
-  --username-mid: #e0f2fe;
-  --username-end: #818cf8;
+.username-mask--huyen-anh {
+  --username-start: #6366f1;
+  --username-mid: #e0e7ff;
+  --username-end: #8b5cf6;
+  --username-glow-rgb: 99 102 241;
+  --username-speed: 5.2s;
+}
+
+.username-mask--linh-hai {
+  --username-start: #22d3ee;
+  --username-mid: #cffafe;
+  --username-end: #3b82f6;
   --username-glow-rgb: 34 211 238;
+  --username-speed: 5.1s;
 }
 
-.username-mask--tide {
+.username-mask--chan-nguyen {
+  --username-start: #10b981;
+  --username-mid: #d1fae5;
+  --username-end: #22d3ee;
+  --username-glow-rgb: 16 185 129;
+  --username-speed: 4.9s;
+}
+
+.username-mask--vo-tong {
   --username-start: #60a5fa;
   --username-mid: #dbeafe;
-  --username-end: #818cf8;
+  --username-end: #4f46e5;
   --username-glow-rgb: 59 130 246;
-}
-
-.username-mask--arcane {
-  --username-start: #c4b5fd;
-  --username-mid: #f5d0fe;
-  --username-end: #a78bfa;
-  --username-glow-rgb: 167 139 250;
   --username-speed: 4.8s;
 }
 
-.username-mask--inferno {
-  --username-start: #fb7185;
-  --username-mid: #fdba74;
-  --username-end: #facc15;
-  --username-glow-rgb: 251 113 133;
-  --username-speed: 4.6s;
-}
-
-.username-mask--aurora {
-  --username-start: #34d399;
-  --username-mid: #a7f3d0;
-  --username-end: #67e8f9;
-  --username-glow-rgb: 16 185 129;
+.username-mask--vo-vuong {
+  --username-start: #4f46e5;
+  --username-mid: #f5d0fe;
+  --username-end: #ec4899;
+  --username-glow-rgb: 217 70 239;
   --username-speed: 4.7s;
 }
 
-.username-mask--thunder {
-  --username-start: #22d3ee;
-  --username-mid: #fef08a;
-  --username-end: #f472b6;
-  --username-glow-rgb: 34 211 238;
+.username-mask--vo-hoang {
+  --username-start: #a78bfa;
+  --username-mid: #ede9fe;
+  --username-end: #c026d3;
+  --username-glow-rgb: 167 139 250;
+  --username-speed: 4.6s;
+}
+
+.username-mask--vo-ton {
+  --username-start: #8b5cf6;
+  --username-mid: #e0f2fe;
+  --username-end: #22d3ee;
+  --username-glow-rgb: 56 189 248;
+  --username-speed: 4.5s;
+}
+
+.username-mask--vo-thanh {
+  --username-start: #fb7185;
+  --username-mid: #ffe4e6;
+  --username-end: #f97316;
+  --username-glow-rgb: 251 113 133;
+  --username-speed: 4.4s;
+}
+
+.username-mask--thien-thanh {
+  --username-start: #f59e0b;
+  --username-mid: #fef3c7;
+  --username-end: #fb923c;
+  --username-glow-rgb: 251 191 36;
+  --username-speed: 4.3s;
+}
+
+.username-mask--than-vo {
+  --username-start: #34d399;
+  --username-mid: #d1fae5;
+  --username-end: #22d3ee;
+  --username-glow-rgb: 16 185 129;
   --username-speed: 4.2s;
-  --username-pulse: 2.6s;
+}
+
+.username-mask--thien-de {
+  --username-start: #84cc16;
+  --username-mid: #ecfccb;
+  --username-end: #facc15;
+  --username-glow-rgb: 132 204 22;
+  --username-speed: 4.1s;
+}
+
+.username-mask--chi-ton {
+  --username-start: #d946ef;
+  --username-mid: #fae8ff;
+  --username-end: #facc15;
+  --username-glow-rgb: 217 70 239;
+  --username-speed: 4s;
+  --username-pulse: 2.8s;
+}
+
+.username-mask--than-chu {
+  --username-start: #f472b6;
+  --username-mid: #fef08a;
+  --username-end: #67e8f9;
+  --username-glow-rgb: 250 204 21;
+  --username-speed: 3.9s;
+  --username-pulse: 2.5s;
 }
 
 /* Custom scrollbar for manga theme */
