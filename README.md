@@ -2,7 +2,7 @@
 
 A full-stack manga reader built with Next.js App Router, Better Auth, and MongoDB.
 
-It combines public manga data from OTruyen API with local user features:
+## Feature
 
 - Authentication (email/password + Google OAuth)
 - Bookmarks and reading history
