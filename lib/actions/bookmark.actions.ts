@@ -163,6 +163,14 @@ const normalizeBookmarksPagination = (page: number, pageSize: number) => ({
   ),
 });
 
+export const getCurrentUserBookmarksCount = async (): Promise<number> => {
+  const userId = await getCurrentUserId();
+  if (!userId) return 0;
+
+  await connectToDatabase();
+  return BookmarkModel.countDocuments({ userId });
+};
+
 export const getCurrentUserBookmarksPage = async ({
   page = 1,
   pageSize = DEFAULT_BOOKMARKS_PAGE_SIZE,

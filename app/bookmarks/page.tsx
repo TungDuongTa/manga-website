@@ -10,14 +10,17 @@ import {
 import { MangaCardApi } from "@/components/manga-card-api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getVisiblePages, toPositiveInt } from "@/lib/pagination";
 import { formatShortDate } from "@/lib/date-time";
 import {
+  getCurrentUserBookmarksCount,
   getCurrentUserBookmarksPage,
   removeMangaBookmark,
 } from "@/lib/actions/bookmark.actions";
-import { getCurrentUserReadingHistoryPage } from "@/lib/actions/reading-progress.actions";
+import {
+  getCurrentUserReadingHistoryCount,
+  getCurrentUserReadingHistoryPage,
+} from "@/lib/actions/reading-progress.actions";
 import { getSessionUser } from "@/lib/server-session";
 import { withSiteSuffix } from "@/lib/seo";
 
@@ -50,6 +53,15 @@ interface BookmarksPageProps {
   }>;
 }
 
+type BookmarksTab = "bookmarks" | "history";
+
+const normalizeBookmarksTab = (value?: string): BookmarksTab | null => {
+  if (value === "bookmarks" || value === "history") {
+    return value;
+  }
+  return null;
+};
+
 export default async function BookmarksPage({
   searchParams,
 }: BookmarksPageProps) {
@@ -79,34 +91,40 @@ export default async function BookmarksPage({
 
   const requestedBookmarkPage = toPositiveInt(params.bookmarkPage, 1);
   const requestedHistoryPage = toPositiveInt(params.historyPage, 1);
-
-  const [bookmarkResult, historyResult] = await Promise.all([
-    getCurrentUserBookmarksPage({
-      page: requestedBookmarkPage,
-      pageSize: ITEMS_PER_PAGE,
-    }),
-    getCurrentUserReadingHistoryPage({
-      page: requestedHistoryPage,
-      pageSize: ITEMS_PER_PAGE,
-    }),
+  const requestedTab = normalizeBookmarksTab(params.tab);
+  const [bookmarkTotalItems, historyTotalItems] = await Promise.all([
+    getCurrentUserBookmarksCount(),
+    getCurrentUserReadingHistoryCount(),
   ]);
-
-  const bookmarkedManga = bookmarkResult.items;
-  const readingHistory = historyResult.items;
-  const bookmarkPage = bookmarkResult.page;
-  const historyPage = historyResult.page;
-  const bookmarksTotalPages = bookmarkResult.totalPages;
-  const historyTotalPages = historyResult.totalPages;
-
-  const defaultTab =
-    params.tab === "bookmarks" || params.tab === "history"
-      ? params.tab
-      : bookmarkResult.totalItems > 0
-        ? "bookmarks"
-        : "history";
+  const activeTab: BookmarksTab =
+    requestedTab || (bookmarkTotalItems > 0 ? "bookmarks" : "history");
+  const bookmarkResult =
+    activeTab === "bookmarks"
+      ? await getCurrentUserBookmarksPage({
+          page: requestedBookmarkPage,
+          pageSize: ITEMS_PER_PAGE,
+        })
+      : null;
+  const historyResult =
+    activeTab === "history"
+      ? await getCurrentUserReadingHistoryPage({
+          page: requestedHistoryPage,
+          pageSize: ITEMS_PER_PAGE,
+        })
+      : null;
+  const bookmarkedManga = bookmarkResult?.items || [];
+  const readingHistory = historyResult?.items || [];
+  const bookmarkPage = bookmarkResult?.page ?? requestedBookmarkPage;
+  const historyPage = historyResult?.page ?? requestedHistoryPage;
+  const bookmarksTotalPages =
+    bookmarkResult?.totalPages ||
+    Math.max(1, Math.ceil(bookmarkTotalItems / ITEMS_PER_PAGE));
+  const historyTotalPages =
+    historyResult?.totalPages ||
+    Math.max(1, Math.ceil(historyTotalItems / ITEMS_PER_PAGE));
 
   const buildPageHref = (
-    tab: "bookmarks" | "history",
+    tab: BookmarksTab,
     nextBookmarkPage: number,
     nextHistoryPage: number,
   ) => {
@@ -121,6 +139,9 @@ export default async function BookmarksPage({
     return `/bookmarks?${query.toString()}`;
   };
 
+  const buildTabHref = (tab: BookmarksTab) =>
+    buildPageHref(tab, bookmarkPage, historyPage);
+
   return (
     <div className="min-h-screen">
       <main className="mx-auto max-w-7xl px-4 py-8">
@@ -134,245 +155,249 @@ export default async function BookmarksPage({
           </p>
         </div>
 
-        <Tabs defaultValue={defaultTab}>
-          <TabsList className="w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap mb-8">
-            <TabsTrigger value="bookmarks" className="gap-2">
-              <Bookmark className="h-4 w-4" />
-              Theo dõi ({bookmarkResult.totalItems})
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2">
-              <Clock3 className="h-4 w-4" />
-              Lịch sử ({historyResult.totalItems})
-            </TabsTrigger>
-          </TabsList>
+        <div className="text-muted-foreground inline-flex items-center w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap mb-8">
+          <Link
+            href={buildTabHref("bookmarks")}
+            className={`inline-flex flex-1 justify-center items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              activeTab === "bookmarks"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+            }`}
+          >
+            <Bookmark className="h-4 w-4" />
+            Theo dõi ({bookmarkTotalItems})
+          </Link>
+          <Link
+            href={buildTabHref("history")}
+            className={`inline-flex flex-1 justify-center items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              activeTab === "history"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+            }`}
+          >
+            <Clock3 className="h-4 w-4" />
+            Lịch sử ({historyTotalItems})
+          </Link>
+        </div>
 
-          <TabsContent value="bookmarks">
-            {bookmarkResult.totalItems > 0 ? (
-              <>
-                <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-                  <Badge className="bg-accent text-accent-foreground">
-                    {bookmarkResult.totalItems} đã lưu
-                  </Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Trang {bookmarkPage} trên {bookmarksTotalPages}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                  {bookmarkedManga.map((manga) => {
-                    const removeAction = removeMangaBookmark.bind(
-                      null,
-                      manga.slug,
-                    );
-
-                    return (
-                      <div key={manga.slug}>
-                        <MangaCardApi comic={manga} />
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <p className="text-xs text-muted-foreground">
-                            Bắt đầu theo dõi từ{" "}
-                            {formatShortDate(manga.bookmarkedAt)}
-                          </p>
-                          <form action={removeAction}>
-                            <Button
-                              type="submit"
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground hover:text-destructive"
-                              aria-label={`Xóa ${manga.name} khỏi danh sách theo dõi`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </form>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {bookmarksTotalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-8">
-                    {bookmarkPage > 1 ? (
-                      <Link
-                        href={buildPageHref(
-                          "bookmarks",
-                          bookmarkPage - 1,
-                          historyPage,
-                        )}
-                      >
-                        <Button variant="outline" size="icon">
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" size="icon" disabled>
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                    )}
-
-                    <div className="flex items-center gap-1">
-                      {getVisiblePages(bookmarkPage, bookmarksTotalPages).map(
-                        (pageNum) => (
-                          <Link
-                            key={`bookmark-page-${pageNum}`}
-                            href={buildPageHref(
-                              "bookmarks",
-                              pageNum,
-                              historyPage,
-                            )}
-                          >
-                            <Button
-                              variant={
-                                pageNum === bookmarkPage ? "default" : "outline"
-                              }
-                              size="icon"
-                            >
-                              {pageNum}
-                            </Button>
-                          </Link>
-                        ),
-                      )}
-                    </div>
-
-                    {bookmarkPage < bookmarksTotalPages ? (
-                      <Link
-                        href={buildPageHref(
-                          "bookmarks",
-                          bookmarkPage + 1,
-                          historyPage,
-                        )}
-                      >
-                        <Button variant="outline" size="icon">
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" size="icon" disabled>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-16 bg-card border border-border rounded-xl">
-                <Bookmark className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  Bạn chưa theo dõi bộ truyện nào
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Hãy theo dõi truyện để hiển thị danh sách
+        {activeTab === "bookmarks" ? (
+          bookmarkTotalItems > 0 ? (
+            <>
+              <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
+                <Badge className="bg-accent text-accent-foreground">
+                  {bookmarkTotalItems} đã lưu
+                </Badge>
+                <p className="text-sm text-muted-foreground">
+                  Trang {bookmarkPage} trên {bookmarksTotalPages}
                 </p>
-                <Link href="/browse">
-                  <Button>Khám phá truyện mới</Button>
-                </Link>
               </div>
-            )}
-          </TabsContent>
 
-          <TabsContent value="history">
-            {historyResult.totalItems > 0 ? (
-              <>
-                <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
-                  <Badge className="bg-accent text-accent-foreground">
-                    {historyResult.totalItems} manga in history
-                  </Badge>
-                  <p className="text-sm text-muted-foreground">
-                    Trang {historyPage} trên {historyTotalPages}
-                  </p>
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                {bookmarkedManga.map((manga) => {
+                  const removeAction = removeMangaBookmark.bind(
+                    null,
+                    manga.slug,
+                  );
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                  {readingHistory.map((manga) => (
+                  return (
                     <div key={manga.slug}>
                       <MangaCardApi comic={manga} />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Đọc lần cuối vào {formatShortDate(manga.latestReadAt)}
-                      </p>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Bắt đầu theo dõi từ{" "}
+                          {formatShortDate(manga.bookmarkedAt)}
+                        </p>
+                        <form action={removeAction}>
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            aria-label={`Xóa ${manga.name} khỏi danh sách theo dõi`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </form>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
+              </div>
 
-                {historyTotalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-8">
-                    {historyPage > 1 ? (
-                      <Link
-                        href={buildPageHref(
-                          "history",
-                          bookmarkPage,
-                          historyPage - 1,
-                        )}
-                      >
-                        <Button variant="outline" size="icon">
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" size="icon" disabled>
+              {bookmarksTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8">
+                  {bookmarkPage > 1 ? (
+                    <Link
+                      href={buildPageHref(
+                        "bookmarks",
+                        bookmarkPage - 1,
+                        historyPage,
+                      )}
+                    >
+                      <Button variant="outline" size="icon">
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                    )}
+                    </Link>
+                  ) : (
+                    <Button variant="outline" size="icon" disabled>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  )}
 
-                    <div className="flex items-center gap-1">
-                      {getVisiblePages(historyPage, historyTotalPages).map(
-                        (pageNum) => (
-                          <Link
-                            key={`history-page-${pageNum}`}
-                            href={buildPageHref(
-                              "history",
-                              bookmarkPage,
-                              pageNum,
-                            )}
+                  <div className="flex items-center gap-1">
+                    {getVisiblePages(bookmarkPage, bookmarksTotalPages).map(
+                      (pageNum) => (
+                        <Link
+                          key={`bookmark-page-${pageNum}`}
+                          href={buildPageHref(
+                            "bookmarks",
+                            pageNum,
+                            historyPage,
+                          )}
+                        >
+                          <Button
+                            variant={
+                              pageNum === bookmarkPage ? "default" : "outline"
+                            }
+                            size="icon"
                           >
-                            <Button
-                              variant={
-                                pageNum === historyPage ? "default" : "outline"
-                              }
-                              size="icon"
-                            >
-                              {pageNum}
-                            </Button>
-                          </Link>
-                        ),
-                      )}
-                    </div>
-
-                    {historyPage < historyTotalPages ? (
-                      <Link
-                        href={buildPageHref(
-                          "history",
-                          bookmarkPage,
-                          historyPage + 1,
-                        )}
-                      >
-                        <Button variant="outline" size="icon">
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button variant="outline" size="icon" disabled>
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                            {pageNum}
+                          </Button>
+                        </Link>
+                      ),
                     )}
                   </div>
+
+                  {bookmarkPage < bookmarksTotalPages ? (
+                    <Link
+                      href={buildPageHref(
+                        "bookmarks",
+                        bookmarkPage + 1,
+                        historyPage,
+                      )}
+                    >
+                      <Button variant="outline" size="icon">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button variant="outline" size="icon" disabled>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-16 bg-card border border-border rounded-xl">
+              <Bookmark className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                Bạn chưa theo dõi bộ truyện nào
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Hãy theo dõi truyện để hiển thị danh sách
+              </p>
+              <Link href="/browse">
+                <Button>Khám phá truyện mới</Button>
+              </Link>
+            </div>
+          )
+        ) : historyTotalItems > 0 ? (
+          <>
+            <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
+              <Badge className="bg-accent text-accent-foreground">
+                {historyTotalItems} manga in history
+              </Badge>
+              <p className="text-sm text-muted-foreground">
+                Trang {historyPage} trên {historyTotalPages}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+              {readingHistory.map((manga) => (
+                <div key={manga.slug}>
+                  <MangaCardApi comic={manga} />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Đọc lần cuối vào {formatShortDate(manga.latestReadAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {historyTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                {historyPage > 1 ? (
+                  <Link
+                    href={buildPageHref(
+                      "history",
+                      bookmarkPage,
+                      historyPage - 1,
+                    )}
+                  >
+                    <Button variant="outline" size="icon">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="outline" size="icon" disabled>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
                 )}
-              </>
-            ) : (
-              <div className="text-center py-16 bg-card border border-border rounded-xl">
-                <Clock3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">
-                  Chưa có lịch sử đọc truyện nào
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Hãy thưởng thức một vài bộ truyện tranh
-                </p>
-                <Link href="/browse">
-                  <Button>Khám phá truyện mới</Button>
-                </Link>
+
+                <div className="flex items-center gap-1">
+                  {getVisiblePages(historyPage, historyTotalPages).map(
+                    (pageNum) => (
+                      <Link
+                        key={`history-page-${pageNum}`}
+                        href={buildPageHref("history", bookmarkPage, pageNum)}
+                      >
+                        <Button
+                          variant={
+                            pageNum === historyPage ? "default" : "outline"
+                          }
+                          size="icon"
+                        >
+                          {pageNum}
+                        </Button>
+                      </Link>
+                    ),
+                  )}
+                </div>
+
+                {historyPage < historyTotalPages ? (
+                  <Link
+                    href={buildPageHref(
+                      "history",
+                      bookmarkPage,
+                      historyPage + 1,
+                    )}
+                  >
+                    <Button variant="outline" size="icon">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="outline" size="icon" disabled>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </>
+        ) : (
+          <div className="text-center py-16 bg-card border border-border rounded-xl">
+            <Clock3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              Chưa có lịch sử đọc truyện nào
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Hãy thưởng thức một vài bộ truyện tranh
+            </p>
+            <Link href="/browse">
+              <Button>Khám phá truyện mới</Button>
+            </Link>
+          </div>
+        )}
       </main>
     </div>
   );
