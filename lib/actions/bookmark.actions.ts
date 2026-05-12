@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { BookmarkModel } from "@/database/models/bookmark.model";
 import { connectToDatabase } from "@/database/mongoose";
+import { getManga18Detail } from "@/lib/actions/manga18.actions";
+import { getComicDetail } from "@/lib/actions/otruyen-actions";
 import { normalizePageAndSize } from "@/lib/pagination";
 import {
   DEFAULT_MANGA_ROUTE_BASE,
@@ -46,6 +48,82 @@ export type PaginatedBookmarksResult = {
 
 const DEFAULT_BOOKMARKS_PAGE_SIZE = 24;
 const MAX_BOOKMARKS_PAGE_SIZE = 60;
+
+type LiveBookmarkFields = {
+  name?: string;
+  thumbUrl?: string;
+  status?: string;
+  comicUpdatedAt?: string;
+  categories?: Category[];
+  latestChapterName?: string;
+};
+
+const LIVE_SYNC_CONCURRENCY = 6;
+
+const toTimeMs = (value: unknown): number => {
+  const time = new Date(String(value || "")).getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const mapWithConcurrency = async <T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> => {
+  if (!items.length) return [];
+  const safeConcurrency = Math.max(1, Math.min(concurrency, items.length));
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  const workers = Array.from({ length: safeConcurrency }, async () => {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= items.length) {
+        return;
+      }
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+};
+
+const getLatestChapterNameFromDetail = (chapters: any): string => {
+  const serverData = Array.isArray(chapters?.[0]?.server_data)
+    ? chapters[0].server_data
+    : [];
+  if (!serverData.length) return "";
+  return String(serverData[serverData.length - 1]?.chapter_name || "").trim();
+};
+
+const getLiveBookmarkFields = async (
+  slug: string,
+  routeBase: MangaRouteBase,
+): Promise<LiveBookmarkFields | null> => {
+  if (!slug) return null;
+
+  try {
+    const detail =
+      routeBase === "/18+"
+        ? await getManga18Detail(slug)
+        : (await getComicDetail(slug))?.item;
+    if (!detail) return null;
+
+    return {
+      name: detail.name,
+      thumbUrl: detail.thumb_url,
+      status: detail.status,
+      comicUpdatedAt: detail.updatedAt,
+      categories: detail.category,
+      latestChapterName: getLatestChapterNameFromDetail(detail.chapters),
+    };
+  } catch (error) {
+    console.error(`Failed to load live bookmark fields for "${slug}":`, error);
+    return null;
+  }
+};
 
 const toBookmarkedComic = (
   doc: any,
@@ -107,29 +185,115 @@ export const getCurrentUserBookmarksPage = async ({
 
   await connectToDatabase();
 
-  const totalItems = await BookmarkModel.countDocuments({ userId });
+  const bookmarks = await BookmarkModel.find({ userId })
+    .lean();
+
+  const totalItems = bookmarks.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / normalized.pageSize));
   const safePage = Math.min(normalized.page, totalPages);
-  const skip = (safePage - 1) * normalized.pageSize;
-
-  const bookmarks = await BookmarkModel.find({ userId })
-    .sort({ comicUpdatedAt: -1, createdAt: -1 })
-    .skip(skip)
-    .limit(normalized.pageSize)
-    .lean();
   const bookmarkSlugs = bookmarks.map((bookmark: any) =>
     String(bookmark.slug || ""),
   );
   const inferredRouteMap = await resolveMangaRouteBases(bookmarkSlugs);
+  const routeResolvedBookmarks = bookmarks.map((bookmark: any) => {
+    const slug = String(bookmark.slug || "").trim();
+    const explicitRoute = normalizeMangaRouteBase(bookmark.routeBase);
+    const inferredRoute = inferredRouteMap.get(slug) || DEFAULT_MANGA_ROUTE_BASE;
+    return {
+      bookmark,
+      slug,
+      routeBase: explicitRoute || inferredRoute,
+    };
+  });
+  const enrichedBookmarks = await mapWithConcurrency(
+    routeResolvedBookmarks,
+    LIVE_SYNC_CONCURRENCY,
+    async ({ bookmark, slug, routeBase }) => {
+      const live = await getLiveBookmarkFields(slug, routeBase);
+      const mergedBookmark = live
+        ? {
+            ...bookmark,
+            name: live.name || bookmark.name,
+            thumbUrl: live.thumbUrl || bookmark.thumbUrl,
+            status: live.status || bookmark.status,
+            comicUpdatedAt: live.comicUpdatedAt || bookmark.comicUpdatedAt,
+            categories:
+              Array.isArray(live.categories) && live.categories.length > 0
+                ? live.categories
+                : bookmark.categories,
+            latestChapterName:
+              live.latestChapterName || bookmark.latestChapterName,
+          }
+        : { ...bookmark };
+
+      return {
+        bookmark,
+        mergedBookmark,
+        routeBase,
+      };
+    },
+  );
+
+  const updateOps = enrichedBookmarks
+    .filter(({ bookmark, mergedBookmark, routeBase }) => {
+      const categoriesChanged =
+        JSON.stringify(bookmark.categories || []) !==
+        JSON.stringify(mergedBookmark.categories || []);
+      return (
+        String(bookmark.routeBase || "") !== String(routeBase) ||
+        String(bookmark.name || "") !== String(mergedBookmark.name || "") ||
+        String(bookmark.thumbUrl || "") !==
+          String(mergedBookmark.thumbUrl || "") ||
+        String(bookmark.status || "") !== String(mergedBookmark.status || "") ||
+        String(bookmark.comicUpdatedAt || "") !==
+          String(mergedBookmark.comicUpdatedAt || "") ||
+        String(bookmark.latestChapterName || "") !==
+          String(mergedBookmark.latestChapterName || "") ||
+        categoriesChanged
+      );
+    })
+    .map(({ bookmark, mergedBookmark, routeBase }) => ({
+      updateOne: {
+        filter: { _id: bookmark._id },
+        update: {
+          $set: {
+            routeBase,
+            name: mergedBookmark.name,
+            thumbUrl: mergedBookmark.thumbUrl,
+            status: mergedBookmark.status,
+            comicUpdatedAt: mergedBookmark.comicUpdatedAt,
+            categories: mergedBookmark.categories || [],
+            latestChapterName: mergedBookmark.latestChapterName || "",
+          },
+        },
+      },
+    }));
+
+  if (updateOps.length > 0) {
+    await BookmarkModel.bulkWrite(updateOps, { ordered: false });
+  }
+
+  const sortedMergedBookmarks = enrichedBookmarks
+    .map(({ mergedBookmark, routeBase }) => ({ mergedBookmark, routeBase }))
+    .sort((a, b) => {
+      const updatedDiff =
+        toTimeMs(b.mergedBookmark.comicUpdatedAt) -
+        toTimeMs(a.mergedBookmark.comicUpdatedAt);
+      if (updatedDiff !== 0) return updatedDiff;
+
+      return (
+        toTimeMs(b.mergedBookmark.createdAt) - toTimeMs(a.mergedBookmark.createdAt)
+      );
+    });
+  const skip = (safePage - 1) * normalized.pageSize;
+  const liveItems = sortedMergedBookmarks
+    .slice(skip, skip + normalized.pageSize)
+    .map(({ mergedBookmark, routeBase }) =>
+      toBookmarkedComic(mergedBookmark, routeBase),
+    );
 
   return {
-    items: bookmarks.map((bookmark: any) => {
-      const slug = String(bookmark.slug || "").trim();
-      const explicitRoute = normalizeMangaRouteBase(bookmark.routeBase);
-      const inferredRoute =
-        inferredRouteMap.get(slug) || DEFAULT_MANGA_ROUTE_BASE;
-      return toBookmarkedComic(bookmark, explicitRoute || inferredRoute);
-    }),
+    items: liveItems,
     page: safePage,
     pageSize: normalized.pageSize,
     totalItems,
