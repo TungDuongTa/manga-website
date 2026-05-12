@@ -265,6 +265,17 @@ export const getCurrentUserReadingExpStats =
     return getUserReadingExpStats(userId);
   };
 
+export const getCurrentUserReadingHistoryCount = async (): Promise<number> => {
+  const userId = await getCurrentUserId();
+  if (!userId) return 0;
+
+  await connectToDatabase();
+  return ReadingProgressModel.countDocuments({
+    userId,
+    readChapters: { $exists: true },
+  });
+};
+
 export const getReadingProgressChapterNames = async (
   comicSlug: string,
 ): Promise<string[]> => {
