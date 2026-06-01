@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   title: {
     default: withSiteSuffix(
-      "Đọc truyện tranh manga, manwha và manhua mới nhật được cập nhật tại VuaTruyen",
+      "VuaTruyen - Vua Truyện đọc manga, manhwa và manhua online",
     ),
     template: `%s | ${SITE_NAME}`,
   },
@@ -38,7 +38,20 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
-  keywords: ["manga", "manhwa", "manhua", "read manga", "webtoon", "comics"],
+  keywords: [
+    "vuatruyen",
+    "vua truyen",
+    "vua truyện",
+    "VuaTruyen",
+    "Vua Truyện",
+    "manga",
+    "manhwa",
+    "manhua",
+    "đọc manga",
+    "đọc truyện tranh",
+    "webtoon",
+    "comics",
+  ],
   verification: {
     google: "qfbcsA3mxPig7Cj39s4qhgBfPq1O-0RGXdiBiI-wC0A",
   },
@@ -71,7 +84,7 @@ export const metadata: Metadata = {
     url: "/",
     siteName: SITE_NAME,
     title: withSiteSuffix(
-      "Đọc truyện tranh manga, manwha và manhua mới nhật được cập nhật tại VuaTruyen",
+      "VuaTruyen - Vua Truyện đọc manga, manhwa và manhua online",
     ),
     description: SITE_DESCRIPTION,
     images: [
@@ -86,7 +99,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: withSiteSuffix(
-      "Đọc truyện tranh manga, manwha và manhua mới nhật được cập nhật tại VuaTruyen",
+      "VuaTruyen - Vua Truyện đọc manga, manhwa và manhua online",
     ),
     description: SITE_DESCRIPTION,
     images: ["/body-bg.jpg"],

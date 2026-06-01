@@ -35,7 +35,7 @@ export async function generateMetadata({
     };
   }
 
-  const fallbackDescription = `Đọc truyện 18+ ${comic.name} mới nhật được cập nhật liên tục tại VuaTruyen`;
+  const fallbackDescription = `Đọc truyện 18+ ${comic.name} mới nhất được cập nhật liên tục tại VuaTruyen`;
   const description = truncateText(
     stripHtml(comic.content || "") || fallbackDescription,
     160,

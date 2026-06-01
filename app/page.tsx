@@ -6,13 +6,18 @@ import { MangaCardApi } from "@/components/manga-card-api";
 import { getHomeData, getListByType } from "@/lib/actions/otruyen-actions";
 import { getRecentTopLevelComments } from "@/lib/actions/comment.actions";
 import { getMangaRankings } from "@/lib/actions/manga-view.actions";
-import { SITE_DESCRIPTION, SITE_NAME, toAbsoluteUrl } from "@/lib/seo";
+import {
+  SITE_ALTERNATE_NAME,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  toAbsoluteUrl,
+} from "@/lib/seo";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title:
-    "VuaTruyen - Đọc truyện tranh manga, manwha và manhua mới nhất đưuọc cập nhật hàng ngày.",
+    "VuaTruyen - Vua Truyện đọc manga, manhwa và manhua online",
   description: SITE_DESCRIPTION,
   alternates: {
     canonical: "/",
@@ -47,6 +52,9 @@ export default async function HomePage() {
     "@type": "WebSite",
     name: SITE_NAME,
     alternateName: [
+      "VuaTruyen",
+      "vuatruyen",
+      SITE_ALTERNATE_NAME,
       "Vua Truyen",
       "Vua truyện",
       "vua truyen",

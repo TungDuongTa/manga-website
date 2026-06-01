@@ -1,7 +1,8 @@
 export const SITE_NAME = "VuaTruyen";
+export const SITE_ALTERNATE_NAME = "Vua Truyện";
 
 export const SITE_DESCRIPTION =
-  "Đọc truyện tranh manga, manhwa và manhua online, được cập nhật hằng ngày, có bảng xếp hạng, theo dõi và tiến độ đọc.";
+  "VuaTruyen - Vua Truyện đọc manga, manhwa và manhua online miễn phí, cập nhật hằng ngày, có bảng xếp hạng, theo dõi và tiến độ đọc.";
 
 const FALLBACK_BASE_URL = "https://vuatruyen.vercel.app";
 

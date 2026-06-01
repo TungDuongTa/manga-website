@@ -6,18 +6,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: [
-          "/",
-          "/api/",
-          "/bookmarks",
-          "/profile",
-          "/sign-in",
-          "/sign-up",
-          "/browse",
-          "/latest",
-          "/ranking",
-          "/18+",
-        ],
+        allow: ["/"],
+        disallow: ["/api/", "/bookmarks", "/profile", "/sign-in", "/sign-up"],
       },
     ],
     sitemap: [toAbsoluteUrl("/sitemap.xml")],
