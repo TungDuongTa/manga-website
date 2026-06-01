@@ -6,13 +6,17 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: [
+        allow: [
+          "/",
           "/api/",
           "/bookmarks",
           "/profile",
           "/sign-in",
           "/sign-up",
+          "/browse",
+          "/latest",
+          "/ranking",
+          "/18+",
         ],
       },
     ],
